@@ -1,15 +1,15 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { User, Course, EnrollmentRequest, CourseTask, TaskResult } from './types';
-import Auth from './components/Auth';
-import Verification from './components/Verification';
-import AdminPanel from './components/AdminPanel';
-import ProfileView from './components/ProfileView';
-import UserDashboard from './components/UserDashboard';
-import ParentDashboard from './components/ParentDashboard';
-import AdminLoginModal from './components/AdminLoginModal';
-import { api, isLiveDatabase } from './services/apiService';
-import { sendVerificationEmail } from './services/emailService';
+import { User, Course, EnrollmentRequest, CourseTask, TaskResult } from './types.ts';
+import Auth from './components/Auth.tsx';
+import Verification from './components/Verification.tsx';
+import AdminPanel from './components/AdminPanel.tsx';
+import ProfileView from './components/ProfileView.tsx';
+import UserDashboard from './components/UserDashboard.tsx';
+import ParentDashboard from './components/ParentDashboard.tsx';
+import AdminLoginModal from './components/AdminLoginModal.tsx';
+import { api, isLiveDatabase } from './services/apiService.ts';
+import { sendVerificationEmail } from './services/emailService.ts';
 
 const App: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -33,19 +33,23 @@ const App: React.FC = () => {
       const [u, c, t, r, req] = await Promise.all([
         api.getUsers(), api.getCourses(), api.getTasks(), api.getResults(), api.getRequests()
       ]);
-      setUsers(u); setCourses(c); setTasks(t); setResults(r); setRequests(req);
+      setUsers(u || []);
+      setCourses(c || []);
+      setTasks(t || []);
+      setResults(r || []);
+      setRequests(req || []);
       setDbStatus(isLiveDatabase ? 'live' : 'local');
       
       const savedUserId = localStorage.getItem('it_academy_current_user_id');
       if (savedUserId && !currentUser) {
-        const freshUser = u.find(user => user.id === savedUserId);
+        const freshUser = u?.find((user: User) => user.id === savedUserId);
         if (freshUser) {
           setCurrentUser(freshUser);
           setAuthStep('app');
           if (freshUser.role === 'parent') setCurrentView('parent');
         }
       } else if (currentUser) {
-        const freshUser = u.find(user => user.id === currentUser.id);
+        const freshUser = u?.find((user: User) => user.id === currentUser.id);
         if (freshUser) setCurrentUser(freshUser);
       }
     } catch (e) {

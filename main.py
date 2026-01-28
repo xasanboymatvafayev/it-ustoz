@@ -21,6 +21,9 @@ app.add_middleware(
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 def get_db_connection():
+    if not DATABASE_URL:
+        print("DATABASE_URL environment variable is not set!")
+        return None
     try:
         conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
         return conn
@@ -31,29 +34,32 @@ def get_db_connection():
 def init_db():
     conn = get_db_connection()
     if not conn:
-        print("Initial connection failed. Waiting for database...")
+        print("Initial connection failed. Waiting for DATABASE_URL configuration...")
         return
-    c = conn.cursor()
-    # PostgreSQL sintaksisidagi qavslar to'g'rilandi
-    c.execute('''CREATE TABLE IF NOT EXISTS users 
-                 (id TEXT PRIMARY KEY, username TEXT, password TEXT, firstname TEXT, lastname TEXT, 
-                  email TEXT, role TEXT, enrolledcourses TEXT, grade TEXT, avatar TEXT, parentphone TEXT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS courses 
-                 (id TEXT PRIMARY KEY, title TEXT, description TEXT, subject TEXT, teacher TEXT, createdat BIGINT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS tasks 
-                 (id TEXT PRIMARY KEY, courseid TEXT, title TEXT, description TEXT, order_index INTEGER, 
-                  isclasstask INTEGER DEFAULT 0, timerend BIGINT DEFAULT 0)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS task_results 
-                 (id TEXT PRIMARY KEY, taskid TEXT, userid TEXT, username TEXT, result TEXT, 
-                  errors TEXT, solution TEXT, explanation TEXT, grade INTEGER, admingrade INTEGER, 
-                  status TEXT, timestamp BIGINT, courseid TEXT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS enrollment_requests 
-                 (id TEXT PRIMARY KEY, userid TEXT, username TEXT, courseid TEXT, coursetitle TEXT, status TEXT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS chat_messages
-                 (id TEXT PRIMARY KEY, courseid TEXT, userid TEXT, username TEXT, useravatar TEXT, text TEXT, timestamp BIGINT)''')
-    conn.commit()
-    c.close()
-    conn.close()
+    try:
+        c = conn.cursor()
+        c.execute('''CREATE TABLE IF NOT EXISTS users 
+                     (id TEXT PRIMARY KEY, username TEXT, password TEXT, firstname TEXT, lastname TEXT, 
+                      email TEXT, role TEXT, enrolledcourses TEXT, grade TEXT, avatar TEXT, parentphone TEXT)''')
+        c.execute('''CREATE TABLE IF NOT EXISTS courses 
+                     (id TEXT PRIMARY KEY, title TEXT, description TEXT, subject TEXT, teacher TEXT, createdat BIGINT)''')
+        c.execute('''CREATE TABLE IF NOT EXISTS tasks 
+                     (id TEXT PRIMARY KEY, courseid TEXT, title TEXT, description TEXT, order_index INTEGER, 
+                      isclasstask INTEGER DEFAULT 0, timerend BIGINT DEFAULT 0)''')
+        c.execute('''CREATE TABLE IF NOT EXISTS task_results 
+                     (id TEXT PRIMARY KEY, taskid TEXT, userid TEXT, username TEXT, result TEXT, 
+                      errors TEXT, solution TEXT, explanation TEXT, grade INTEGER, admingrade INTEGER, 
+                      status TEXT, timestamp BIGINT, courseid TEXT)''')
+        c.execute('''CREATE TABLE IF NOT EXISTS enrollment_requests 
+                     (id TEXT PRIMARY KEY, userid TEXT, username TEXT, courseid TEXT, coursetitle TEXT, status TEXT)''')
+        c.execute('''CREATE TABLE IF NOT EXISTS chat_messages
+                     (id TEXT PRIMARY KEY, courseid TEXT, userid TEXT, username TEXT, useravatar TEXT, text TEXT, timestamp BIGINT)''')
+        conn.commit()
+        c.close()
+    except Exception as e:
+        print(f"Error initializing tables: {e}")
+    finally:
+        conn.close()
 
 init_db()
 
@@ -62,6 +68,7 @@ async def root():
     return {
         "status": "AI Academy API is running", 
         "environment": "Render + PostgreSQL",
+        "database_connected": DATABASE_URL is not None,
         "live": True
     }
 
@@ -75,7 +82,6 @@ async def get_users():
     res = []
     for u in users:
         d = dict(u)
-        # PostgreSQL kichik harfga o'tkazadi
         res.append({
             "id": d['id'],
             "username": d['username'],
@@ -96,6 +102,7 @@ async def get_users():
 @app.put("/api/users/{id}")
 async def update_user(id: str, u: dict):
     conn = get_db_connection()
+    if not conn: return {"status": "error", "message": "no db"}
     c = conn.cursor()
     c.execute("UPDATE users SET firstname=%s, lastname=%s, email=%s, avatar=%s, parentphone=%s WHERE id=%s",
                  (u['firstName'], u['lastName'], u['email'], u.get('avatar'), u.get('parentPhone'), id))
@@ -107,6 +114,7 @@ async def update_user(id: str, u: dict):
 @app.post("/api/register_user")
 async def register_user(u: dict):
     conn = get_db_connection()
+    if not conn: return {"status": "error", "message": "no db"}
     c = conn.cursor()
     try:
         c.execute("INSERT INTO users VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", 
@@ -144,6 +152,7 @@ async def get_courses():
 @app.post("/api/courses")
 async def add_course(course: dict):
     conn = get_db_connection()
+    if not conn: return {"status": "error"}
     c = conn.cursor()
     c.execute("INSERT INTO courses VALUES (%s,%s,%s,%s,%s,%s)", 
                  (course['id'], course['title'], course['description'], course['subject'], course['teacher'], course['createdAt']))
@@ -177,6 +186,7 @@ async def get_tasks():
 @app.post("/api/tasks")
 async def add_task(task: dict):
     conn = get_db_connection()
+    if not conn: return {"status": "error"}
     c = conn.cursor()
     c.execute("INSERT INTO tasks VALUES (%s,%s,%s,%s,%s,%s,%s)", 
                  (task['id'], task['courseId'], task['title'], task['description'], task.get('order', 0), 
@@ -189,6 +199,7 @@ async def add_task(task: dict):
 @app.patch("/api/tasks/{id}/timer")
 async def update_task_timer(id: str, data: dict):
     conn = get_db_connection()
+    if not conn: return {"status": "error"}
     c = conn.cursor()
     c.execute("UPDATE tasks SET timerend = %s WHERE id = %s", (data['timerEnd'], id))
     conn.commit()
@@ -227,6 +238,7 @@ async def get_results():
 @app.post("/api/results")
 async def add_result(res: dict):
     conn = get_db_connection()
+    if not conn: return {"status": "error"}
     c = conn.cursor()
     c.execute("INSERT INTO task_results VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", 
                  (res['id'], res['taskId'], res['userId'], res['userName'], res['result'], 
@@ -240,6 +252,7 @@ async def add_result(res: dict):
 @app.patch("/api/results/{id}")
 async def update_result(id: str, data: dict):
     conn = get_db_connection()
+    if not conn: return {"status": "error"}
     c = conn.cursor()
     c.execute("UPDATE task_results SET admingrade = %s, status = %s WHERE id = %s", 
                  (data['adminGrade'], data['status'], id))
@@ -272,6 +285,7 @@ async def get_requests():
 @app.post("/api/requests")
 async def add_request(req: dict):
     conn = get_db_connection()
+    if not conn: return {"status": "error"}
     c = conn.cursor()
     c.execute("INSERT INTO enrollment_requests VALUES (%s,%s,%s,%s,%s,%s)", 
                  (req['id'], req['userId'], req['userName'], req['courseId'], req['courseTitle'], req['status']))
@@ -283,6 +297,7 @@ async def add_request(req: dict):
 @app.post("/api/requests/{id}/approve")
 async def approve_request(id: str):
     conn = get_db_connection()
+    if not conn: return {"status": "error"}
     c = conn.cursor()
     c.execute("SELECT * FROM enrollment_requests WHERE id = %s", (id,))
     req = c.fetchone()
@@ -304,6 +319,7 @@ async def approve_request(id: str):
 @app.delete("/api/users/{u_id}/courses/{c_id}")
 async def remove_user_course(u_id: str, c_id: str):
     conn = get_db_connection()
+    if not conn: return {"status": "error"}
     c = conn.cursor()
     c.execute("SELECT enrolledcourses FROM users WHERE id = %s", (u_id,))
     user_row = c.fetchone()
@@ -341,6 +357,7 @@ async def get_chat(course_id: str):
 @app.post("/api/chat")
 async def add_chat(msg: dict):
     conn = get_db_connection()
+    if not conn: return {"status": "error"}
     c = conn.cursor()
     c.execute("INSERT INTO chat_messages VALUES (%s,%s,%s,%s,%s,%s,%s)",
                  (msg['id'], msg['courseId'], msg['userId'], msg['userName'], msg.get('userAvatar'), msg['text'], msg['timestamp']))
