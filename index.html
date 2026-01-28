@@ -21,6 +21,9 @@
             100% { transform: translateY(0px); }
         }
         .float-icon { animation: float 3s ease-in-out infinite; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
     </style>
 <script type="importmap">
 {
@@ -37,5 +40,7 @@
 </head>
 <body class="bg-[#F8FAFC] text-[#1E293B]">
     <div id="root"></div>
+    <!-- BU QISIM JUDA MUHIM: index.tsx ni yuklash -->
+    <script type="module" src="index.tsx"></script>
 </body>
 </html>

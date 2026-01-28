@@ -22,7 +22,6 @@ DATABASE_URL = os.environ.get("DATABASE_URL")
 
 def get_db_connection():
     try:
-        # PostgreSQL ulanishi uchun sslmode='require' Render-da kerak bo'lishi mumkin
         conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
         return conn
     except Exception as e:
@@ -35,22 +34,23 @@ def init_db():
         print("Initial connection failed. Waiting for database...")
         return
     c = conn.cursor()
+    # PostgreSQL sintaksisidagi qavslar to'g'rilandi
     c.execute('''CREATE TABLE IF NOT EXISTS users 
-                 (id TEXT PRIMARY KEY, username TEXT, password TEXT, firstName TEXT, lastName TEXT, 
-                  email TEXT, role TEXT, enrolledCourses TEXT, grade TEXT, avatar TEXT, parentPhone TEXT)''')
+                 (id TEXT PRIMARY KEY, username TEXT, password TEXT, firstname TEXT, lastname TEXT, 
+                  email TEXT, role TEXT, enrolledcourses TEXT, grade TEXT, avatar TEXT, parentphone TEXT)''')
     c.execute('''CREATE TABLE IF NOT EXISTS courses 
-                 (id TEXT PRIMARY KEY, title TEXT, description TEXT, subject TEXT, teacher TEXT, createdAt BIGINT)''')
+                 (id TEXT PRIMARY KEY, title TEXT, description TEXT, subject TEXT, teacher TEXT, createdat BIGINT)''')
     c.execute('''CREATE TABLE IF NOT EXISTS tasks 
-                 (id TEXT PRIMARY KEY, courseId TEXT, title TEXT, description TEXT, order_index INTEGER, 
-                  isClassTask INTEGER DEFAULT 0, timerEnd BIGINT DEFAULT 0)''')
+                 (id TEXT PRIMARY KEY, courseid TEXT, title TEXT, description TEXT, order_index INTEGER, 
+                  isclasstask INTEGER DEFAULT 0, timerend BIGINT DEFAULT 0)''')
     c.execute('''CREATE TABLE IF NOT EXISTS task_results 
-                 (id TEXT PRIMARY KEY, taskId TEXT, userId TEXT, userName TEXT, result TEXT, 
-                  errors TEXT, solution TEXT, explanation TEXT, grade INTEGER, adminGrade INTEGER, 
-                  status TEXT, timestamp BIGINT, courseId TEXT)''')
+                 (id TEXT PRIMARY KEY, taskid TEXT, userid TEXT, username TEXT, result TEXT, 
+                  errors TEXT, solution TEXT, explanation TEXT, grade INTEGER, admingrade INTEGER, 
+                  status TEXT, timestamp BIGINT, courseid TEXT)''')
     c.execute('''CREATE TABLE IF NOT EXISTS enrollment_requests 
-                 (id TEXT PRIMARY KEY, userId TEXT, userName TEXT, courseId TEXT, courseTitle TEXT, status TEXT)''')
+                 (id TEXT PRIMARY KEY, userid TEXT, username TEXT, courseid TEXT, coursetitle TEXT, status TEXT)''')
     c.execute('''CREATE TABLE IF NOT EXISTS chat_messages
-                 (id TEXT PRIMARY KEY, courseId TEXT, userId TEXT, userName TEXT, userAvatar TEXT, text TEXT, timestamp BIGINT)''')
+                 (id TEXT PRIMARY KEY, courseid TEXT, userid TEXT, username TEXT, useravatar TEXT, text TEXT, timestamp BIGINT)''')
     conn.commit()
     c.close()
     conn.close()
@@ -75,8 +75,20 @@ async def get_users():
     res = []
     for u in users:
         d = dict(u)
-        d['enrolledCourses'] = json.loads(d['enrolledcourses']) if d.get('enrolledcourses') else []
-        res.append(d)
+        # PostgreSQL kichik harfga o'tkazadi
+        res.append({
+            "id": d['id'],
+            "username": d['username'],
+            "password": d['password'],
+            "firstName": d['firstname'],
+            "lastName": d['lastname'],
+            "email": d['email'],
+            "role": d['role'],
+            "enrolledCourses": json.loads(d['enrolledcourses']) if d.get('enrolledcourses') else [],
+            "grade": d['grade'],
+            "avatar": d.get('avatar'),
+            "parentPhone": d.get('parentphone')
+        })
     c.close()
     conn.close()
     return res
@@ -85,7 +97,7 @@ async def get_users():
 async def update_user(id: str, u: dict):
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("UPDATE users SET firstName=%s, lastName=%s, email=%s, avatar=%s, parentPhone=%s WHERE id=%s",
+    c.execute("UPDATE users SET firstname=%s, lastname=%s, email=%s, avatar=%s, parentphone=%s WHERE id=%s",
                  (u['firstName'], u['lastName'], u['email'], u.get('avatar'), u.get('parentPhone'), id))
     conn.commit()
     c.close()
@@ -115,7 +127,16 @@ async def get_courses():
     c = conn.cursor()
     c.execute("SELECT * FROM courses")
     courses = c.fetchall()
-    res = [dict(row) for row in courses]
+    res = []
+    for d in courses:
+        res.append({
+            "id": d['id'],
+            "title": d['title'],
+            "description": d['description'],
+            "subject": d['subject'],
+            "teacher": d['teacher'],
+            "createdAt": d['createdat']
+        })
     c.close()
     conn.close()
     return res
@@ -138,7 +159,17 @@ async def get_tasks():
     c = conn.cursor()
     c.execute("SELECT * FROM tasks")
     tasks = c.fetchall()
-    res = [dict(row) for row in tasks]
+    res = []
+    for d in tasks:
+        res.append({
+            "id": d['id'],
+            "courseId": d['courseid'],
+            "title": d['title'],
+            "description": d['description'],
+            "order": d['order_index'],
+            "isClassTask": bool(d['isclasstask']),
+            "timerEnd": d['timerend']
+        })
     c.close()
     conn.close()
     return res
@@ -159,7 +190,7 @@ async def add_task(task: dict):
 async def update_task_timer(id: str, data: dict):
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("UPDATE tasks SET timerEnd = %s WHERE id = %s", (data['timerEnd'], id))
+    c.execute("UPDATE tasks SET timerend = %s WHERE id = %s", (data['timerEnd'], id))
     conn.commit()
     c.close()
     conn.close()
@@ -172,7 +203,23 @@ async def get_results():
     c = conn.cursor()
     c.execute("SELECT * FROM task_results")
     results = c.fetchall()
-    res = [dict(row) for row in results]
+    res = []
+    for d in results:
+        res.append({
+            "id": d['id'],
+            "taskId": d['taskid'],
+            "userId": d['userid'],
+            "userName": d['username'],
+            "result": d['result'],
+            "errors": d['errors'],
+            "solution": d['solution'],
+            "explanation": d['explanation'],
+            "grade": d['grade'],
+            "adminGrade": d['admingrade'],
+            "status": d['status'],
+            "timestamp": d['timestamp'],
+            "courseId": d['courseid']
+        })
     c.close()
     conn.close()
     return res
@@ -194,7 +241,7 @@ async def add_result(res: dict):
 async def update_result(id: str, data: dict):
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("UPDATE task_results SET adminGrade = %s, status = %s WHERE id = %s", 
+    c.execute("UPDATE task_results SET admingrade = %s, status = %s WHERE id = %s", 
                  (data['adminGrade'], data['status'], id))
     conn.commit()
     c.close()
@@ -208,7 +255,16 @@ async def get_requests():
     c = conn.cursor()
     c.execute("SELECT * FROM enrollment_requests")
     requests = c.fetchall()
-    res = [dict(row) for row in requests]
+    res = []
+    for d in requests:
+        res.append({
+            "id": d['id'],
+            "userId": d['userid'],
+            "userName": d['username'],
+            "courseId": d['courseid'],
+            "courseTitle": d['coursetitle'],
+            "status": d['status']
+        })
     c.close()
     conn.close()
     return res
@@ -232,13 +288,13 @@ async def approve_request(id: str):
     req = c.fetchone()
     if req:
         user_id, course_id = req['userid'], req['courseid']
-        c.execute("SELECT enrolledCourses FROM users WHERE id = %s", (user_id,))
+        c.execute("SELECT enrolledcourses FROM users WHERE id = %s", (user_id,))
         user_row = c.fetchone()
         if user_row:
             courses = json.loads(user_row['enrolledcourses']) if user_row['enrolledcourses'] else []
             if course_id not in courses:
                 courses.append(course_id)
-                c.execute("UPDATE users SET enrolledCourses = %s WHERE id = %s", (json.dumps(courses), user_id))
+                c.execute("UPDATE users SET enrolledcourses = %s WHERE id = %s", (json.dumps(courses), user_id))
         c.execute("DELETE FROM enrollment_requests WHERE id = %s", (id,))
     conn.commit()
     c.close()
@@ -249,12 +305,12 @@ async def approve_request(id: str):
 async def remove_user_course(u_id: str, c_id: str):
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT enrolledCourses FROM users WHERE id = %s", (u_id,))
+    c.execute("SELECT enrolledcourses FROM users WHERE id = %s", (u_id,))
     user_row = c.fetchone()
     if user_row:
         courses = json.loads(user_row['enrolledcourses']) if user_row['enrolledcourses'] else []
         courses = [c for c in courses if c != c_id]
-        c.execute("UPDATE users SET enrolledCourses = %s WHERE id = %s", (json.dumps(courses), u_id))
+        c.execute("UPDATE users SET enrolledcourses = %s WHERE id = %s", (json.dumps(courses), u_id))
     conn.commit()
     c.close()
     conn.close()
@@ -265,9 +321,19 @@ async def get_chat(course_id: str):
     conn = get_db_connection()
     if not conn: return []
     c = conn.cursor()
-    c.execute("SELECT * FROM chat_messages WHERE courseId = %s ORDER BY timestamp ASC", (course_id,))
+    c.execute("SELECT * FROM chat_messages WHERE courseid = %s ORDER BY timestamp ASC", (course_id,))
     msgs = c.fetchall()
-    res = [dict(row) for row in msgs]
+    res = []
+    for d in msgs:
+        res.append({
+            "id": d['id'],
+            "courseId": d['courseid'],
+            "userId": d['userid'],
+            "userName": d['username'],
+            "userAvatar": d.get('useravatar'),
+            "text": d['text'],
+            "timestamp": d['timestamp']
+        })
     c.close()
     conn.close()
     return res
