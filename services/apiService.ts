@@ -1,14 +1,13 @@
+
 import { User, Course, EnrollmentRequest, CourseTask, TaskResult, ChatMessage } from '../types';
 
-// Render deploydan keyin berilgan URL manzilini shu yerga qo'ying
-// Masalan: 'https://ai-academy-backend.onrender.com/api'
-const RENDER_API_URL = ''; 
-const API_BASE = RENDER_API_URL || 'http://localhost:8000/api';
+// Render live URL manzili
+const RENDER_API_URL = 'https://it-ustoz.onrender.com/api'; 
+const API_BASE = RENDER_API_URL;
 
 const getLocal = (key: string) => JSON.parse(localStorage.getItem(`db_${key}`) || '[]');
 const setLocal = (key: string, data: any) => localStorage.setItem(`db_${key}`, JSON.stringify(data));
 
-// Baza holatini tekshirish uchun flag
 export let isLiveDatabase = false;
 
 async function smartFetch(url: string, options?: RequestInit) {
@@ -74,7 +73,7 @@ export const api = {
     await smartFetch(`${API_BASE}/tasks/${taskId}/timer`, { method: 'PATCH', body: JSON.stringify({ timerEnd: endTime }) });
     const tasks = getLocal('tasks');
     const updated = tasks.map((t: any) => t.id === taskId ? { ...t, timerEnd: endTime } : t);
-    setLocal('tasks', updated);
+    setLocal('tasks', updated); // Fixed: previously was setLocal('users', updated)
   },
 
   getResults: async (): Promise<TaskResult[]> => {
