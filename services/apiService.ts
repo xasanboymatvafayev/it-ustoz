@@ -1,7 +1,10 @@
 
 import { User, Course, EnrollmentRequest, CourseTask, TaskResult, ChatMessage } from '../types';
 
-const API_BASE = 'http://localhost:8000/api';
+// Railway deploydan keyin berilgan URL manzilini shu yerga qo'ying
+// Masalan: 'https://ai-academy-production.up.railway.app/api'
+const RAILWAY_API_URL = ''; 
+const API_BASE = RAILWAY_API_URL || 'http://localhost:8000/api';
 
 const getLocal = (key: string) => JSON.parse(localStorage.getItem(`db_${key}`) || '[]');
 const setLocal = (key: string, data: any) => localStorage.setItem(`db_${key}`, JSON.stringify(data));
@@ -26,7 +29,7 @@ async function smartFetch(url: string, options?: RequestInit) {
 
 export const api = {
   checkStatus: async () => {
-    const res = await smartFetch(`${API_BASE}/users`);
+    const res = await smartFetch(`${API_BASE.replace('/api', '')}/`);
     return res !== null;
   },
 

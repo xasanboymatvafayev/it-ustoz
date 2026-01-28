@@ -5,9 +5,11 @@ from pydantic import BaseModel
 from typing import List, Optional
 import sqlite3
 import json
+import os
 
 app = FastAPI()
 
+# CORS sozlamalarini barcha domenlar uchun ochamiz (Railway frontend uchun kerak)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -40,6 +42,10 @@ def init_db():
     conn.close()
 
 init_db()
+
+@app.get("/")
+async def root():
+    return {"status": "AI Academy API is running", "db": DATABASE}
 
 @app.get("/api/users")
 async def get_users():
