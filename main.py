@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -9,7 +8,6 @@ import os
 
 app = FastAPI()
 
-# CORS sozlamalarini barcha domenlar uchun ochamiz (Railway frontend uchun kerak)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -45,7 +43,7 @@ init_db()
 
 @app.get("/")
 async def root():
-    return {"status": "AI Academy API is running", "db": DATABASE}
+    return {"status": "AI Academy API is running", "environment": "Railway"}
 
 @app.get("/api/users")
 async def get_users():
