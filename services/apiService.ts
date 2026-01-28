@@ -1,10 +1,9 @@
-
 import { User, Course, EnrollmentRequest, CourseTask, TaskResult, ChatMessage } from '../types';
 
-// Railway deploydan keyin berilgan URL manzilini shu yerga qo'ying
-// Masalan: 'https://ai-academy-production.up.railway.app/api'
-const RAILWAY_API_URL = ''; 
-const API_BASE = RAILWAY_API_URL || 'http://localhost:8000/api';
+// Render deploydan keyin berilgan URL manzilini shu yerga qo'ying
+// Masalan: 'https://ai-academy-backend.onrender.com/api'
+const RENDER_API_URL = ''; 
+const API_BASE = RENDER_API_URL || 'http://localhost:8000/api';
 
 const getLocal = (key: string) => JSON.parse(localStorage.getItem(`db_${key}`) || '[]');
 const setLocal = (key: string, data: any) => localStorage.setItem(`db_${key}`, JSON.stringify(data));
