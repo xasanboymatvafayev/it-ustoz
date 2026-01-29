@@ -1,10 +1,18 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { Subject, TaskResult } from "../types";
+import { SubjectType, TaskResult } from "../types.ts";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const getApiKey = () => {
+  try {
+    return process.env.API_KEY || "";
+  } catch (e) {
+    return "";
+  }
+};
 
-export async function checkTask(userName: string, subject: Subject, task: string, courseTitle: string): Promise<TaskResult> {
+const ai = new GoogleGenAI({ apiKey: getApiKey() });
+
+export async function checkTask(userName: string, subject: SubjectType, task: string, courseTitle: string): Promise<TaskResult> {
   const prompt = `
     Foydalanuvchi: ${userName}
     Kurs nomi: ${courseTitle}
@@ -17,11 +25,11 @@ export async function checkTask(userName: string, subject: Subject, task: string
     
     Javobni quyidagi JSON formatda qaytar:
     {
-      "result": "Tahlil xulosasi (masalan: Kod to'g'ri ishlamoqda, lekin optimizatsiya kerak)",
-      "errors": "Koddagi xatolar yoki texnik kamchiliklar ro'yxati",
-      "solution": "Ideal kod namunasi yoki to'g'ri texnik javob",
-      "explanation": "Nega aynan shunday bo'lishi kerakligi haqida mentoralik maslahati",
-      "grade": 0 dan 100 gacha ball
+      "result": "Tahlil xulosasi",
+      "errors": "Koddagi xatolar",
+      "solution": "Ideal kod namunasi",
+      "explanation": "Maslahat",
+      "grade": 85
     }
   `;
 
@@ -49,13 +57,13 @@ export async function checkTask(userName: string, subject: Subject, task: string
     
     return {
       ...data,
-      subject,
       userName,
       timestamp: Date.now(),
       id: Math.random().toString(),
-      courseId: '', // Bu keyinchalik to'ldiriladi
+      courseId: '',
       taskId: 'generic',
-      userId: '' // Bu keyinchalik to'ldiriladi
+      userId: '',
+      status: 'pending'
     };
   } catch (error) {
     console.error("AI Error:", error);
