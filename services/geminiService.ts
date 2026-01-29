@@ -2,17 +2,24 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SubjectType, TaskResult } from "../types.ts";
 
-const getApiKey = () => {
-  try {
-    return process.env.API_KEY || "";
-  } catch (e) {
-    return "";
-  }
-};
-
-const ai = new GoogleGenAI({ apiKey: getApiKey() });
-
 export async function checkTask(userName: string, subject: SubjectType, task: string, courseTitle: string): Promise<TaskResult> {
+  // Brauzer muhitida API kalitini olishning eng xavfsiz usuli
+  let apiKey = "";
+  
+  try {
+    // Vercel build o'zgaruvchisi yoki global shim
+    apiKey = (window as any).process?.env?.API_KEY || "";
+  } catch (e) {
+    console.error("API Key access error:", e);
+  }
+
+  if (!apiKey || apiKey.trim() === "") {
+    throw new Error("Gemini API kaliti sozlanmagan. Iltimos, Vercel sozlamalarida API_KEY o'zgaruvchisini tekshiring.");
+  }
+
+  // SDK faqat funksiya chaqirilganda va kalit borligida ishga tushadi
+  const ai = new GoogleGenAI({ apiKey });
+
   const prompt = `
     Foydalanuvchi: ${userName}
     Kurs nomi: ${courseTitle}
@@ -53,20 +60,26 @@ export async function checkTask(userName: string, subject: SubjectType, task: st
       },
     });
 
-    const data = JSON.parse(response.text || "{}");
+    const textOutput = response.text;
+    if (!textOutput) throw new Error("AI dan javob olinmadi");
+    
+    const data = JSON.parse(textOutput);
     
     return {
       ...data,
       userName,
       timestamp: Date.now(),
-      id: Math.random().toString(),
+      id: Math.random().toString(36).substr(2, 9),
       courseId: '',
       taskId: 'generic',
       userId: '',
       status: 'pending'
     };
-  } catch (error) {
-    console.error("AI Error:", error);
-    throw new Error("AI bilan bog'lanishda xatolik yuz berdi.");
+  } catch (error: any) {
+    console.error("AI Error Details:", error);
+    if (error.message?.includes('API key')) {
+      throw new Error("API kaliti noto'g'ri yoki faol emas.");
+    }
+    throw new Error("AI tahlilida xatolik: " + (error.message || "Noma'lum xato"));
   }
 }
