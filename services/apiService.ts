@@ -1,3 +1,4 @@
+
 import { User, Course, EnrollmentRequest, CourseTask, TaskResult, ChatMessage } from '../types.ts';
 
 // Render live URL manzili
@@ -13,12 +14,23 @@ async function smartFetch(url: string, options?: RequestInit) {
   try {
     const response = await fetch(url, {
       ...options,
-      headers: { 'Content-Type': 'application/json', ...options?.headers }
+      headers: { 
+        'Content-Type': 'application/json',
+        ...options?.headers 
+      },
+      mode: 'cors', // CORS rejimini aniq ko'rsatamiz
+      credentials: 'omit' // Oddiy fetch uchun 'omit', agar cookie kerak bo'lmasa
     });
-    if (!response.ok) throw new Error('API Error');
+    
+    if (!response.ok) {
+      console.warn(`API Error: ${response.status} ${response.statusText} at ${url}`);
+      throw new Error(`API Error: ${response.status}`);
+    }
+    
     isLiveDatabase = true;
     return await response.json();
   } catch (e) {
+    console.error(`Fetch failed for ${url}:`, e);
     isLiveDatabase = false;
     return null;
   }
