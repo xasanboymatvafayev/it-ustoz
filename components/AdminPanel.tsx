@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { User, Course, CourseTask, TaskResult, EnrollmentRequest, Subject, SubjectType } from '../types.ts';
 import { api } from '../services/apiService.ts';
@@ -69,7 +68,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (!confirm("Hamma o'quvchilar uchun 4 daqiqalik taymerni boshlaysizmi?")) return;
     // API orqali taymerni 4 daqiqaga o'rnatish
     await api.startTaskTimer(taskId, 4);
-    alert("Taymer boshlandi!");
+    alert("Taymer boshlandi! O'quvchilar 4 daqiqa ichida javob berishi shart.");
   };
 
   return (
@@ -186,12 +185,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <div>
                       <div className="text-[10px] font-bold text-slate-500 uppercase">VAZIFA {t.order}</div>
                       <div className="font-bold text-white mb-2">{t.title}</div>
-                      <button 
-                        onClick={() => handleStartTimer(t.id)}
-                        className="bg-rose-600/20 text-rose-400 text-[10px] font-black px-4 py-2 rounded-xl border border-rose-500/30 hover:bg-rose-600 hover:text-white transition flex items-center gap-2 uppercase tracking-widest"
-                      >
-                        <i className="fas fa-stopwatch"></i> Taymer (4m)
-                      </button>
+                      <div className="flex gap-2">
+                         <button 
+                          onClick={() => handleStartTimer(t.id)}
+                          className="bg-rose-600/20 text-rose-400 text-[10px] font-black px-4 py-2 rounded-xl border border-rose-500/30 hover:bg-rose-600 hover:text-white transition flex items-center gap-2 uppercase tracking-widest"
+                        >
+                          <i className="fas fa-stopwatch"></i> Taymer (4m)
+                        </button>
+                        {t.timerEnd && t.timerEnd > Date.now() && (
+                          <span className="text-[9px] font-black text-rose-500 bg-rose-500/10 px-2 py-2 rounded-lg border border-rose-500/20 animate-pulse">AKTIV TAYMER</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
