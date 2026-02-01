@@ -1,9 +1,10 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { User, Course, EnrollmentRequest, CourseTask, TaskResult } from '../types';
 import TaskForm from './TaskForm';
 import ResultView from './ResultView';
 import QuizArena from './QuizArena';
+import CourseChat from './CourseChat';
 
 interface UserDashboardProps {
   user: User;
@@ -17,7 +18,8 @@ interface UserDashboardProps {
 const UserDashboard: React.FC<UserDashboardProps> = ({ user, courses, requests, tasks, onEnroll, onTaskSubmit }) => {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [latestResult, setLatestResult] = useState<TaskResult | null>(null);
-  const [activeTab, setActiveTab] = useState<'courses' | 'tasks' | 'ranking' | 'quiz'>('courses');
+  const [activeTab, setActiveTab] = useState<'courses' | 'ranking' | 'quiz'>('courses');
+  const [courseSection, setCourseSection] = useState<'tasks' | 'chat'>('tasks');
   const [showQuiz, setShowQuiz] = useState(false);
 
   const isEnrolled = (courseId: string) => user.enrolledCourses.includes(courseId);
@@ -47,7 +49,7 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ user, courses, requests, 
                   <h3 className="text-2xl font-black text-white mb-3 group-hover:text-indigo-400 transition">{course.title}</h3>
                   <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6">{course.subject}</div>
                   {isEnrolled(course.id) ? (
-                    <button onClick={() => setSelectedCourse(course)} className="w-full py-4 bg-white/5 text-white rounded-2xl font-black text-xs uppercase tracking-widest border border-white/5 hover:bg-indigo-600 transition shadow-xl">Kursga Kirish</button>
+                    <button onClick={() => { setSelectedCourse(course); setCourseSection('tasks'); }} className="w-full py-4 bg-white/5 text-white rounded-2xl font-black text-xs uppercase tracking-widest border border-white/5 hover:bg-indigo-600 transition shadow-xl">Kursga Kirish</button>
                   ) : (
                     <button onClick={() => onEnroll(course.id)} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition shadow-2xl">A'zo bo'lish</button>
                   )}
@@ -59,9 +61,8 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ user, courses, requests, 
           {activeTab === 'ranking' && (
             <div className="max-w-3xl mx-auto space-y-4">
                <h3 className="text-2xl font-black text-white text-center mb-8">Talabalar Reytingi</h3>
-               <div className="bg-white/5 p-4 rounded-[2.5rem] border border-white/5">
-                 {/* Bu yerga umumiy reyting logic qo'shiladi (users array kerak) */}
-                 <p className="text-center text-slate-500 py-10">Reyting tez kunda yangilanadi...</p>
+               <div className="bg-white/5 p-4 rounded-[2.5rem] border border-white/5 text-center text-slate-500 py-10">
+                 Reyting tez kunda yangilanadi...
                </div>
             </div>
           )}
@@ -82,51 +83,61 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ user, courses, requests, 
         </>
       ) : (
         <div className="space-y-8">
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-8">
             <button onClick={() => { setSelectedCourse(null); setLatestResult(null); }} className="text-slate-500 hover:text-white font-black text-xs uppercase tracking-widest flex items-center gap-3 transition">
               <i className="fas fa-arrow-left"></i> Kurslarga Qaytish
             </button>
-            <div className="text-right">
+            
+            <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5">
+              <button onClick={() => setCourseSection('tasks')} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${courseSection === 'tasks' ? 'bg-white text-slate-900' : 'text-slate-500 hover:text-white'}`}>Darslar</button>
+              <button onClick={() => setCourseSection('chat')} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${courseSection === 'chat' ? 'bg-white text-slate-900' : 'text-slate-500 hover:text-white'}`}>Guruh Chati</button>
+            </div>
+
+            <div className="text-right hidden md:block">
               <h2 className="text-2xl font-black text-white leading-none mb-1">{selectedCourse.title}</h2>
               <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{selectedCourse.subject}</span>
             </div>
           </div>
 
-          {!latestResult ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-              <div className="space-y-6">
-                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Vazifalar Ro'yxati</h3>
-                <div className="space-y-4">
-                  {tasks.filter(t => t.courseId === selectedCourse.id).map(task => (
-                    <div key={task.id} className="bg-white/5 p-6 rounded-3xl border border-white/5 hover:border-indigo-500/30 transition">
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-bold text-white uppercase text-xs tracking-wider">Vazifa {task.order}: {task.title}</h4>
+          {courseSection === 'tasks' ? (
+            !latestResult ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                <div className="space-y-6">
+                  <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Vazifalar Ro'yxati</h3>
+                  <div className="space-y-4">
+                    {tasks.filter(t => t.courseId === selectedCourse.id).map(task => (
+                      <div key={task.id} className="bg-white/5 p-6 rounded-3xl border border-white/5 hover:border-indigo-500/30 transition">
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-bold text-white uppercase text-xs tracking-wider">Vazifa {task.order}: {task.title}</h4>
+                        </div>
+                        <p className="text-xs text-slate-500 leading-relaxed mb-4">{task.description}</p>
                       </div>
-                      <p className="text-xs text-slate-500 leading-relaxed mb-4">{task.description}</p>
-                    </div>
-                  ))}
-                  {tasks.filter(t => t.courseId === selectedCourse.id).length === 0 && (
-                    <div className="p-10 text-center bg-white/5 rounded-3xl border-2 border-dashed border-white/5 text-slate-600 italic">Hali ushbu kurs uchun vazifalar belgilanmagan.</div>
-                  )}
+                    ))}
+                    {tasks.filter(t => t.courseId === selectedCourse.id).length === 0 && (
+                      <div className="p-10 text-center bg-white/5 rounded-3xl border-2 border-dashed border-white/5 text-slate-600 italic">Hali ushbu kurs uchun vazifalar belgilanmagan.</div>
+                    )}
+                  </div>
+                </div>
+                <div className="relative">
+                  <div className="sticky top-24">
+                    <TaskForm 
+                      userName={user.firstName} 
+                      courseTitle={selectedCourse.title}
+                      courseSubject={selectedCourse.subject}
+                      onResult={(res) => {
+                        const fullRes = { ...res, courseId: selectedCourse.id, userId: user.id };
+                        onTaskSubmit(fullRes);
+                        setLatestResult(fullRes);
+                      }} 
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="relative">
-                <div className="sticky top-24">
-                  <TaskForm 
-                    userName={user.firstName} 
-                    courseTitle={selectedCourse.title}
-                    courseSubject={selectedCourse.subject}
-                    onResult={(res) => {
-                      const fullRes = { ...res, courseId: selectedCourse.id, userId: user.id };
-                      onTaskSubmit(fullRes);
-                      setLatestResult(fullRes);
-                    }} 
-                  />
-                </div>
-              </div>
-            </div>
+            ) : (
+              <ResultView result={latestResult} onReset={() => setLatestResult(null)} />
+            )
           ) : (
-            <ResultView result={latestResult} onReset={() => setLatestResult(null)} />
+            <CourseChat user={user} courseId={selectedCourse.id} />
           )}
         </div>
       )}
