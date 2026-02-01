@@ -1,6 +1,6 @@
 
 import React, { useMemo } from 'react';
-import { User, TaskResult, Course } from '../types';
+import { User, TaskResult, Course } from '../types.ts';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface ParentDashboardProps {
@@ -11,7 +11,6 @@ interface ParentDashboardProps {
 }
 
 const ParentDashboard: React.FC<ParentDashboardProps> = ({ parent, students, results, courses }) => {
-  // Ota-ona telefon raqami orqali bog'langan bolalarni topish
   const myChildren = useMemo(() => 
     students.filter(s => s.parentPhone === parent.parentPhone && s.role === 'user'),
     [students, parent.parentPhone]
@@ -34,7 +33,6 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({ parent, students, res
           <div className="col-span-full bg-white p-20 text-center rounded-[2.5rem] border-2 border-dashed border-slate-200 text-slate-400">
             <i className="fas fa-child text-5xl mb-4 block"></i>
             <p className="font-bold">Bog'langan farzandlar topilmadi.</p>
-            <p className="text-xs mt-2">Profil sozlamalarida telefon raqamingiz to'g'ri ekanligini tekshiring.</p>
           </div>
         ) : myChildren.map(child => {
           const childResults = results.filter(r => r.userId === child.id);
@@ -53,7 +51,6 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({ parent, students, res
                   <h3 className="text-xl font-black text-slate-800">{child.firstName} {child.lastName}</h3>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-[10px] font-bold bg-emerald-50 text-emerald-600 px-2 py-1 rounded-md uppercase">O'rtacha Ball: {avg.toFixed(0)}</span>
-                    <span className="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md uppercase">{child.enrolledCourses.length} ta Kurs</span>
                   </div>
                 </div>
               </div>
@@ -62,25 +59,9 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({ parent, students, res
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                    <XAxis dataKey="name" hide />
-                    <YAxis domain={[0, 100]} hide />
-                    <Tooltip />
                     <Line type="monotone" dataKey="score" stroke="#4F46E5" strokeWidth={4} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
-              </div>
-
-              <div className="space-y-3">
-                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Oxirgi faollik</h4>
-                <div className="space-y-2">
-                  {childResults.slice(0, 3).map(r => (
-                    <div key={r.id} className="p-3 bg-slate-50 rounded-xl flex items-center justify-between">
-                      <div className="text-xs font-bold text-slate-700">{courses.find(c => c.id === r.courseId)?.title}</div>
-                      <div className="text-xs font-black text-indigo-600">{r.adminGrade || r.grade} Ball</div>
-                    </div>
-                  ))}
-                  {childResults.length === 0 && <div className="text-center py-4 text-xs text-slate-300 italic">Hali natijalar yo'q</div>}
-                </div>
               </div>
             </div>
           );

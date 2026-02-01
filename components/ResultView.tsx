@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef } from 'react';
-import { TaskResult } from '../types';
+import { TaskResult } from '../types.ts';
 
 interface ResultViewProps {
   result: TaskResult;

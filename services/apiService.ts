@@ -1,5 +1,5 @@
 
-import { User, Course, EnrollmentRequest, CourseTask, TaskResult, ChatMessage } from '../types';
+import { User, Course, EnrollmentRequest, CourseTask, TaskResult, ChatMessage } from '../types.ts';
 
 // Render live URL manzili
 const RENDER_API_URL = 'https://it-ustoz.onrender.com/api'; 
@@ -70,10 +70,13 @@ export const api = {
 
   startTaskTimer: async (taskId: string, durationMinutes: number) => {
     const endTime = Date.now() + durationMinutes * 60000;
-    await smartFetch(`${API_BASE}/tasks/${taskId}/timer`, { method: 'PATCH', body: JSON.stringify({ timerEnd: endTime }) });
+    await smartFetch(`${API_BASE}/tasks/${taskId}/timer`, { 
+      method: 'PATCH', 
+      body: JSON.stringify({ timerEnd: endTime }) 
+    });
     const tasks = getLocal('tasks');
-    const updated = tasks.map((t: any) => t.id === taskId ? { ...t, timerEnd: endTime } : t);
-    setLocal('tasks', updated); // Fixed: previously was setLocal('users', updated)
+    const updated = tasks.map((t: any) => t.id === taskId ? { ...t, timerEnd: endTime, isClassTask: true } : t);
+    setLocal('tasks', updated);
   },
 
   getResults: async (): Promise<TaskResult[]> => {

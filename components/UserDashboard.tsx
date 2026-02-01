@@ -17,12 +17,15 @@ interface UserDashboardProps {
 
 const UserDashboard: React.FC<UserDashboardProps> = ({ user, courses, requests, tasks, onEnroll, onTaskSubmit }) => {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [latestResult, setLatestResult] = useState<TaskResult | null>(null);
   const [activeTab, setActiveTab] = useState<'courses' | 'ranking' | 'quiz'>('courses');
   const [courseSection, setCourseSection] = useState<'tasks' | 'chat'>('tasks');
   const [showQuiz, setShowQuiz] = useState(false);
 
   const isEnrolled = (courseId: string) => user.enrolledCourses.includes(courseId);
+  const courseTasks = tasks.filter(t => t.courseId === selectedCourse?.id);
+  const currentTask = courseTasks.find(t => t.id === activeTaskId) || courseTasks[0];
 
   return (
     <div className="space-y-12 animate-fade-in">
@@ -84,7 +87,7 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ user, courses, requests, 
       ) : (
         <div className="space-y-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-8">
-            <button onClick={() => { setSelectedCourse(null); setLatestResult(null); }} className="text-slate-500 hover:text-white font-black text-xs uppercase tracking-widest flex items-center gap-3 transition">
+            <button onClick={() => { setSelectedCourse(null); setLatestResult(null); setActiveTaskId(null); }} className="text-slate-500 hover:text-white font-black text-xs uppercase tracking-widest flex items-center gap-3 transition">
               <i className="fas fa-arrow-left"></i> Kurslarga Qaytish
             </button>
             
@@ -105,15 +108,24 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ user, courses, requests, 
                 <div className="space-y-6">
                   <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Vazifalar Ro'yxati</h3>
                   <div className="space-y-4">
-                    {tasks.filter(t => t.courseId === selectedCourse.id).map(task => (
-                      <div key={task.id} className="bg-white/5 p-6 rounded-3xl border border-white/5 hover:border-indigo-500/30 transition">
-                        <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-bold text-white uppercase text-xs tracking-wider">Vazifa {task.order}: {task.title}</h4>
+                    {courseTasks.map(task => {
+                      const isActive = activeTaskId === task.id;
+                      const hasTimer = task.timerEnd && task.timerEnd > Date.now();
+                      return (
+                        <div 
+                          key={task.id} 
+                          onClick={() => setActiveTaskId(task.id)}
+                          className={`bg-white/5 p-6 rounded-3xl border transition cursor-pointer group ${isActive ? 'border-indigo-500 bg-indigo-500/5' : 'border-white/5 hover:border-indigo-500/30'}`}
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <h4 className="font-bold text-white uppercase text-xs tracking-wider">Vazifa {task.order}: {task.title}</h4>
+                            {hasTimer && <span className="text-[9px] font-black bg-rose-500 text-white px-2 py-0.5 rounded animate-pulse">LIVE</span>}
+                          </div>
+                          <p className="text-xs text-slate-500 leading-relaxed">{task.description}</p>
                         </div>
-                        <p className="text-xs text-slate-500 leading-relaxed mb-4">{task.description}</p>
-                      </div>
-                    ))}
-                    {tasks.filter(t => t.courseId === selectedCourse.id).length === 0 && (
+                      );
+                    })}
+                    {courseTasks.length === 0 && (
                       <div className="p-10 text-center bg-white/5 rounded-3xl border-2 border-dashed border-white/5 text-slate-600 italic">Hali ushbu kurs uchun vazifalar belgilanmagan.</div>
                     )}
                   </div>
@@ -124,6 +136,7 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ user, courses, requests, 
                       userName={user.firstName} 
                       courseTitle={selectedCourse.title}
                       courseSubject={selectedCourse.subject}
+                      activeTask={currentTask}
                       onResult={(res) => {
                         const fullRes = { ...res, courseId: selectedCourse.id, userId: user.id };
                         onTaskSubmit(fullRes);

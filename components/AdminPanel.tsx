@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { User, Course, CourseTask, TaskResult, EnrollmentRequest, Subject, SubjectType } from '../types.ts';
+import { api } from '../services/apiService.ts';
 
 interface AdminPanelProps {
   users: User[];
@@ -62,6 +63,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     onAddTask(newTask);
     setTaskForm({ title: '', description: '' });
     alert("Vazifa muvaffaqiyatli qo'shildi!");
+  };
+
+  const handleStartTimer = async (taskId: string) => {
+    if (!confirm("Hamma o'quvchilar uchun 4 daqiqalik taymerni boshlaysizmi?")) return;
+    await api.startTaskTimer(taskId, 4);
+    alert("Taymer boshlandi!");
   };
 
   return (
@@ -177,7 +184,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div key={t.id} className="bg-white/5 p-6 rounded-3xl border border-white/5 flex items-center justify-between">
                     <div>
                       <div className="text-[10px] font-bold text-slate-500">VAZIFA {t.order}</div>
-                      <div className="font-bold text-white">{t.title}</div>
+                      <div className="font-bold text-white mb-2">{t.title}</div>
+                      <button 
+                        onClick={() => handleStartTimer(t.id)}
+                        className="bg-rose-600/20 text-rose-400 text-[9px] font-black px-3 py-1.5 rounded-lg border border-rose-600/30 hover:bg-rose-600 transition uppercase tracking-tighter"
+                      >
+                        <i className="fas fa-stopwatch mr-1"></i> Taymer (4m)
+                      </button>
                     </div>
                   </div>
                 ))}

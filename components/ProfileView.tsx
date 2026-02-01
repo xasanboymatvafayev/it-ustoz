@@ -1,18 +1,15 @@
 
 import React, { useMemo } from 'react';
-import { TaskResult, User, Course } from '../types';
-// Fixed: Removed RadarChartProps which is not exported by recharts and was unused.
+import { TaskResult, User, Course } from '../types.ts';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar } from 'recharts';
 
 interface ProfileViewProps {
   user: User;
   results: TaskResult[];
   courses: Course[];
-  // Added missing onUpdateUser prop to match its usage in App.tsx
   onUpdateUser: (user: User) => void;
 }
 
-// Fixed the component signature to include missing props: courses and onUpdateUser
 const ProfileView: React.FC<ProfileViewProps> = ({ user, results, courses, onUpdateUser }) => {
   const userResults = results.filter(r => r.userId === user.id);
 
@@ -113,7 +110,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, results, courses, onUpd
           <button className="w-full mt-10 py-5 bg-slate-900 text-white rounded-[1.5rem] font-black text-sm uppercase tracking-widest hover:bg-indigo-600 transition shadow-xl">Get Full Audit Report</button>
         </div>
 
-        {/* Neural Knowledge Brain (3D Visualization Simulation) */}
+        {/* Neural Knowledge Brain */}
         <div className="lg:col-span-2 bg-slate-900 rounded-[3.5rem] p-12 text-white relative overflow-hidden shadow-2xl">
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
           <div className="relative z-10">
@@ -129,45 +126,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, results, courses, onUpd
                 </RadarChart>
               </ResponsiveContainer>
             </div>
-            <div className="flex justify-center gap-8 mt-6">
-              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-indigo-500"></div> <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Active Connections</span></div>
-              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-emerald-500"></div> <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Growth Nodes</span></div>
-            </div>
-          </div>
-        </div>
-
-        {/* Global Marketability Scorecard */}
-        <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-10">
-          <div className="bg-white rounded-[3.5rem] p-10 border border-slate-100 shadow-xl">
-             <h3 className="text-xl font-black text-slate-800 mb-8">Weekly Cognitive Activity</h3>
-             <div className="h-[250px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={analytics.weeklyProgress}>
-                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize: 12, fontWeight: 800, fill: '#94A3B8'}} />
-                    <Tooltip cursor={{fill: '#f1f5f9'}} contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)'}} />
-                    <Bar dataKey="val" fill="#6366f1" radius={[10, 10, 10, 10]} barSize={30} />
-                  </BarChart>
-                </ResponsiveContainer>
-             </div>
-          </div>
-          <div className="bg-gradient-to-br from-slate-900 to-indigo-950 rounded-[3.5rem] p-12 text-white shadow-2xl relative">
-             <div className="absolute top-10 right-10">
-               <div className="w-20 h-20 rounded-full border-4 border-emerald-500/20 flex items-center justify-center">
-                 <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center text-white"><i className="fas fa-check"></i></div>
-               </div>
-             </div>
-             <h3 className="text-3xl font-black mb-6">Marketability Index</h3>
-             <p className="text-slate-400 text-lg leading-relaxed mb-8">Sizning malakangiz hozirda <span className="text-white font-bold">AQSH va Yevropa</span> bozoridagi o'rtacha Senior darajasining 76% qismini qoplaydi.</p>
-             <div className="grid grid-cols-2 gap-6">
-               <div className="p-6 bg-white/5 rounded-3xl border border-white/10">
-                 <div className="text-xs font-black text-indigo-400 uppercase tracking-widest mb-1">Global Rank</div>
-                 <div className="text-2xl font-black">Top 4%</div>
-               </div>
-               <div className="p-6 bg-white/5 rounded-3xl border border-white/10">
-                 <div className="text-xs font-black text-purple-400 uppercase tracking-widest mb-1">Employability</div>
-                 <div className="text-2xl font-black">92 / 100</div>
-               </div>
-             </div>
           </div>
         </div>
       </div>
