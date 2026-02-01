@@ -13,7 +13,6 @@ interface AuthProps {
 
 const Auth: React.FC<AuthProps> = ({ users, onLogin, onRegister, onAdminClick, isLoading }) => {
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
-  // Explicitly type the role to avoid 'user' as const restriction
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -29,8 +28,13 @@ const Auth: React.FC<AuthProps> = ({ users, onLogin, onRegister, onAdminClick, i
     e.preventDefault();
     if (mode === 'login') {
       const success = onLogin(formData.username, formData.password);
-      if (!success) alert("Login yoki parol xato!");
+      if (!success) alert("Login yoki parol noto'g'ri!");
     } else if (mode === 'register') {
+      const existingEmail = users.find(u => u.email.toLowerCase() === formData.email.toLowerCase());
+      if (existingEmail) {
+        alert("Ushbu email manzili allaqachon ro'yxatdan o'tgan!");
+        return;
+      }
       onRegister({
         id: Math.random().toString(36).substr(2, 9),
         ...formData,
@@ -43,7 +47,7 @@ const Auth: React.FC<AuthProps> = ({ users, onLogin, onRegister, onAdminClick, i
         await sendPasswordRecoveryEmail(user.email, user.username, user.password || '****');
         setMode('login');
       } else {
-        alert("Bunday email ro'yxatdan o'tmagan!");
+        alert("Bunday email tizimda mavjud emas!");
       }
     }
   };
@@ -57,7 +61,7 @@ const Auth: React.FC<AuthProps> = ({ users, onLogin, onRegister, onAdminClick, i
           <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl rotate-3">
             <i className="fas fa-terminal text-white text-3xl"></i>
           </div>
-          <h1 className="text-3xl font-black text-slate-800 tracking-tight">IT Ustoz</h1>
+          <h1 className="text-3xl font-black text-slate-800 tracking-tight">AI USTOZ</h1>
           <p className="text-slate-500 font-medium">
             {mode === 'login' ? 'Tizimga kirish' : mode === 'register' ? 'Ro\'yxatdan o\'tish' : 'Parolni tiklash'}
           </p>
@@ -73,7 +77,7 @@ const Auth: React.FC<AuthProps> = ({ users, onLogin, onRegister, onAdminClick, i
 
           {mode !== 'forgot' && (
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Username</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Foydalanuvchi nomi</label>
               <input type="text" required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-indigo-600 outline-none transition" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} />
             </div>
           )}
@@ -99,7 +103,7 @@ const Auth: React.FC<AuthProps> = ({ users, onLogin, onRegister, onAdminClick, i
                 <input type="text" placeholder="Familiya" required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-indigo-600 outline-none" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Telefon (Ota-ona uchun bog'lanish)</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Telefon raqam</label>
                 <input type="tel" placeholder="+998" required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-indigo-600 outline-none" value={formData.parentPhone} onChange={e => setFormData({...formData, parentPhone: e.target.value})} />
               </div>
             </>

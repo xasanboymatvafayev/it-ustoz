@@ -1,7 +1,6 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { User, Course, CourseTask, TaskResult, EnrollmentRequest, Subject } from '../types';
-import { api } from '../services/apiService';
+import React, { useState, useMemo } from 'react';
+import { User, Course, CourseTask, TaskResult, EnrollmentRequest, Subject, SubjectType } from '../types';
 
 interface AdminPanelProps {
   users: User[];
@@ -16,226 +15,274 @@ interface AdminPanelProps {
   onDeleteUserFromCourse: (userId: string, courseId: string) => void;
 }
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ users, courses, tasks, results, requests, onAddCourse, onAddTask, onApprove, onGrade, onDeleteUserFromCourse }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'courses' | 'rating'>('dashboard');
+const AdminPanel: React.FC<AdminPanelProps> = ({ 
+  users, courses, tasks, results, requests, 
+  onAddCourse, onAddTask, onApprove, onGrade, onDeleteUserFromCourse 
+}) => {
+  const [activeSection, setActiveSection] = useState<'courses' | 'requests' | 'users'>('courses');
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
-  const [courseTab, setCourseTab] = useState<'matrix' | 'tasks' | 'students' | 'requests'>('matrix');
-  
-  const [newCourse, setNewCourse] = useState({ title: '', description: '', subject: Subject.FRONTEND });
-  const [newTask, setNewTask] = useState({ title: '', description: '', isClassTask: false });
-  const [reviewModal, setReviewModal] = useState<TaskResult | null>(null);
-  const [adminBall, setAdminBall] = useState('');
+  const [courseViewTab, setCourseViewTab] = useState<'matrix' | 'rating' | 'tasks'>('matrix');
+  const [showAddCourse, setShowAddCourse] = useState(false);
+  const [reviewResult, setReviewResult] = useState<TaskResult | null>(null);
 
-  const stats = useMemo(() => ({
-    students: users.filter(u => u.role === 'user').length,
-    courses: courses.length,
-    pending: requests.length,
-    totalResults: results.length
-  }), [users, courses, requests, results]);
+  // Vazifa yaratish formasi uchun state
+  const [taskForm, setTaskForm] = useState({ title: '', description: '' });
 
-  const handleStartTimer = async (taskId: string) => {
-    const mins = prompt("Taymer uchun daqiqa kiriting:", "4");
-    if (mins) {
-      await api.startTaskTimer(taskId, parseInt(mins));
-      alert("Taymer barcha o'quvchilar uchun boshlandi!");
-    }
+  // Kurs yaratish formasi uchun state
+  const [courseForm, setCourseForm] = useState({
+    title: '',
+    description: '',
+    subject: Subject.FRONTEND as SubjectType,
+    teacher: ''
+  });
+
+  const selectedCourse = useMemo(() => courses.find(c => c.id === selectedCourseId), [courses, selectedCourseId]);
+  const courseTasks = useMemo(() => tasks.filter(t => t.courseId === selectedCourseId).sort((a,b) => a.order - b.order), [tasks, selectedCourseId]);
+  const enrolledStudents = useMemo(() => users.filter(u => u.enrolledCourses.includes(selectedCourseId || '')), [users, selectedCourseId]);
+
+  const handleCreateCourse = (e: React.FormEvent) => {
+    e.preventDefault();
+    const newCourse: Course = {
+      id: Math.random().toString(36).substr(2, 9),
+      ...courseForm,
+      createdAt: Date.now()
+    };
+    onAddCourse(newCourse);
+    setShowAddCourse(false);
+    setCourseForm({ title: '', description: '', subject: Subject.FRONTEND, teacher: '' });
   };
 
-  const renderDashboard = () => (
-    <div className="space-y-8 animate-fade-in">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {[
-          { l: 'O\'quvchilar', v: stats.students, i: 'fa-user-graduate', c: 'indigo' },
-          { l: 'Kurslar', v: stats.courses, i: 'fa-book-open', c: 'blue' },
-          { l: 'Arizalar', v: stats.pending, i: 'fa-clock', c: 'amber' },
-          { l: 'Bajarilganlar', v: stats.totalResults, i: 'fa-check-double', c: 'emerald' },
-        ].map((s, idx) => (
-          <div key={idx} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex items-center gap-5">
-            <div className={`w-14 h-14 rounded-2xl bg-${s.c}-50 text-${s.c}-600 flex items-center justify-center text-2xl`}><i className={`fas ${s.i}`}></i></div>
-            <div>
-              <div className="text-3xl font-black text-slate-800">{s.v}</div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{s.l}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-        <h3 className="text-xl font-black text-slate-800 mb-6">Barcha Kurslar</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {courses.map(c => (
-            <div key={c.id} onClick={() => { setSelectedCourseId(c.id); setActiveTab('courses'); setCourseTab('matrix'); }} className="p-6 rounded-3xl border border-slate-100 hover:border-indigo-500 cursor-pointer transition group">
-              <div className="flex justify-between items-start mb-4">
-                <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white"><i className="fas fa-terminal"></i></div>
-                <span className="text-[10px] font-black bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md">{c.subject}</span>
-              </div>
-              <h4 className="font-bold text-slate-800 group-hover:text-indigo-600 transition">{c.title}</h4>
-              <p className="text-xs text-slate-400 mt-2 line-clamp-1">{c.description}</p>
-            </div>
-          ))}
-          <button onClick={() => { setActiveTab('courses'); setSelectedCourseId(null); }} className="p-6 rounded-3xl border-2 border-dashed border-slate-200 text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition flex flex-col items-center justify-center gap-2">
-            <i className="fas fa-plus-circle text-2xl"></i>
-            <span className="font-bold text-sm">Yangi kurs qo'shish</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderMatrix = (courseId: string) => {
-    const courseUsers = users.filter(u => u.enrolledCourses.includes(courseId));
-    const courseTasks = tasks.filter(t => t.courseId === courseId);
-
-    return (
-      <div className="overflow-x-auto bg-white rounded-3xl border border-slate-100 shadow-sm mt-4">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 border-b">
-            <tr>
-              <th className="px-6 py-4 font-black text-slate-400 uppercase text-[10px] sticky left-0 bg-slate-50">O'quvchi</th>
-              {courseTasks.map(t => (
-                <th key={t.id} className="px-6 py-4 font-black text-slate-400 uppercase text-[10px] min-w-[120px] text-center">
-                  {t.isClassTask && <i className="fas fa-clock text-amber-500 mr-1"></i>} {t.title}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {courseUsers.map(user => (
-              <tr key={user.id} className="hover:bg-slate-50/50 transition">
-                <td className="px-6 py-4 sticky left-0 bg-white">
-                  <div className="font-bold text-slate-800">{user.firstName} {user.lastName}</div>
-                  <div className="text-[10px] text-slate-400 uppercase font-bold">{user.username}</div>
-                </td>
-                {courseTasks.map(task => {
-                  const res = results.find(r => r.taskId === task.id && r.userId === user.id);
-                  return (
-                    <td key={task.id} className="px-6 py-4 text-center">
-                      {res ? (
-                        <button 
-                          onClick={() => { setReviewModal(res); setAdminBall(res.adminGrade?.toString() || ''); }}
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center mx-auto transition-all transform hover:scale-110 ${res.status === 'reviewed' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-100' : 'bg-amber-500 text-white shadow-lg shadow-amber-100 animate-pulse'}`}
-                        >
-                          {res.adminGrade ? <span className="font-black text-xs">{res.adminGrade}</span> : <i className="fas fa-check text-xs"></i>}
-                        </button>
-                      ) : (
-                        <div className="text-rose-300 opacity-30"><i className="fas fa-times"></i></div>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
+  const handleCreateTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCourseId) return;
+    const newTask: CourseTask = {
+      id: Math.random().toString(36).substr(2, 9),
+      courseId: selectedCourseId,
+      title: taskForm.title,
+      description: taskForm.description,
+      order: courseTasks.length + 1
+    };
+    onAddTask(newTask);
+    setTaskForm({ title: '', description: '' });
+    alert("Vazifa muvaffaqiyatli qo'shildi!");
   };
 
   return (
-    <div className="space-y-8 animate-fade-in pb-20">
-      <div className="flex gap-4 bg-white p-2 rounded-2xl border border-slate-100 w-fit shadow-sm">
-        <button onClick={() => { setActiveTab('dashboard'); setSelectedCourseId(null); }} className={`px-6 py-2 rounded-xl font-bold text-sm transition ${activeTab === 'dashboard' ? 'bg-slate-900 text-white shadow-xl' : 'text-slate-400 hover:bg-slate-50'}`}>Dashboard</button>
-        <button onClick={() => setActiveTab('courses')} className={`px-6 py-2 rounded-xl font-bold text-sm transition ${activeTab === 'courses' ? 'bg-slate-900 text-white shadow-xl' : 'text-slate-400 hover:bg-slate-50'}`}>Kurslar</button>
-        <button onClick={() => setActiveTab('rating')} className={`px-6 py-2 rounded-xl font-bold text-sm transition ${activeTab === 'rating' ? 'bg-slate-900 text-white shadow-xl' : 'text-slate-400 hover:bg-slate-50'}`}>Reyting</button>
+    <div className="min-h-screen animate-fade-in text-slate-300">
+      <div className="flex items-center gap-6 mb-12 bg-white/5 p-2 rounded-[2rem] w-fit border border-white/5">
+        <button onClick={() => { setActiveSection('courses'); setSelectedCourseId(null); }} className={`px-8 py-3 rounded-full text-xs font-black uppercase tracking-widest transition ${activeSection === 'courses' ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-500/20' : 'hover:text-white'}`}>Kurslar</button>
+        <button onClick={() => setActiveSection('requests')} className={`px-8 py-3 rounded-full text-xs font-black uppercase tracking-widest transition ${activeSection === 'requests' ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-500/20' : 'hover:text-white'}`}>
+          Arizalar {requests.length > 0 && <span className="ml-2 bg-rose-500 text-white px-2 py-0.5 rounded-full text-[9px]">{requests.length}</span>}
+        </button>
+        <button onClick={() => setActiveSection('users')} className={`px-8 py-3 rounded-full text-xs font-black uppercase tracking-widest transition ${activeSection === 'users' ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-500/20' : 'hover:text-white'}`}>Foydalanuvchilar</button>
       </div>
 
-      {activeTab === 'dashboard' && renderDashboard()}
+      {activeSection === 'courses' && !selectedCourseId && (
+        <div className="space-y-8">
+          <div className="flex justify-between items-center">
+            <h2 className="text-3xl font-black text-white tracking-tighter">Kurslar Arxivi</h2>
+            <button onClick={() => setShowAddCourse(true)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition shadow-2xl shadow-emerald-500/20">
+              <i className="fas fa-plus mr-2"></i> Yangi Kurs
+            </button>
+          </div>
 
-      {selectedCourseId && activeTab === 'courses' && (
-        <div className="space-y-6">
-          <div className="flex flex-col md:flex-row items-center justify-between bg-white p-4 rounded-2xl border border-slate-100 shadow-sm gap-4">
-            <button onClick={() => setSelectedCourseId(null)} className="text-slate-400 hover:text-indigo-600 font-bold text-sm flex items-center gap-2"><i className="fas fa-chevron-left"></i> Orqaga</button>
-            <h2 className="text-lg font-black text-slate-800">{courses.find(c => c.id === selectedCourseId)?.title}</h2>
-            <div className="flex gap-2 flex-wrap justify-center">
-              <button onClick={() => setCourseTab('matrix')} className={`px-4 py-2 rounded-xl text-xs font-bold transition ${courseTab === 'matrix' ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-400'}`}>Rating Matrix</button>
-              <button onClick={() => setCourseTab('tasks')} className={`px-4 py-2 rounded-xl text-xs font-bold transition ${courseTab === 'tasks' ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-400'}`}>Vazifalar</button>
-              <button onClick={() => setCourseTab('students')} className={`px-4 py-2 rounded-xl text-xs font-bold transition ${courseTab === 'students' ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-400'}`}>O'quvchilar</button>
-              <button onClick={() => setCourseTab('requests')} className={`px-4 py-2 rounded-xl text-xs font-bold transition ${courseTab === 'requests' ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-400'}`}>Arizalar ({requests.filter(r => r.courseId === selectedCourseId).length})</button>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {courses.map(c => (
+              <div key={c.id} onClick={() => setSelectedCourseId(c.id)} className="bg-slate-900/50 p-10 rounded-[3rem] border border-white/5 hover:border-indigo-500/40 transition-all cursor-pointer group relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform"><i className="fas fa-layer-group text-8xl"></i></div>
+                <div className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4">{c.subject}</div>
+                <h3 className="text-2xl font-black text-white mb-2 group-hover:text-indigo-400 transition">{c.title}</h3>
+                <p className="text-slate-500 text-sm mb-8 line-clamp-2">{c.description}</p>
+                <div className="flex justify-between items-center">
+                  <div className="text-[10px] font-black text-slate-600 uppercase">Boshqarish <i className="fas fa-arrow-right ml-2"></i></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {showAddCourse && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
+          <div className="bg-slate-900 w-full max-w-2xl p-12 rounded-[3.5rem] border border-white/10 shadow-2xl">
+            <h3 className="text-3xl font-black text-white mb-8 text-center">Yangi Kurs Yaratish</h3>
+            <form onSubmit={handleCreateCourse} className="space-y-6">
+              <input required value={courseForm.title} onChange={e => setCourseForm({...courseForm, title: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-indigo-500" placeholder="Kurs Nomi" />
+              <select value={courseForm.subject} onChange={e => setCourseForm({...courseForm, subject: e.target.value as SubjectType})} className="w-full bg-slate-800 border border-white/10 rounded-2xl px-6 py-4 outline-none">
+                {Object.values(Subject).map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <input required value={courseForm.teacher} onChange={e => setCourseForm({...courseForm, teacher: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-indigo-500" placeholder="O'qituvchi Ismi" />
+              <textarea required value={courseForm.description} onChange={e => setCourseForm({...courseForm, description: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 outline-none h-32" placeholder="Kurs haqida batafsil..." />
+              <div className="flex gap-4">
+                <button type="button" onClick={() => setShowAddCourse(false)} className="flex-1 py-4 rounded-xl font-bold bg-white/5">Bekor qilish</button>
+                <button type="submit" className="flex-1 py-4 rounded-xl font-bold bg-indigo-600">Kursni Saqlash</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {selectedCourseId && selectedCourse && (
+        <div className="space-y-10 animate-fade-in">
+          <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
+            <div className="flex items-center gap-6">
+              <button onClick={() => setSelectedCourseId(null)} className="w-14 h-14 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-white/10 transition"><i className="fas fa-arrow-left"></i></button>
+              <div>
+                <h2 className="text-4xl font-black text-white tracking-tighter">{selectedCourse.title}</h2>
+                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{selectedCourse.subject}</span>
+              </div>
+            </div>
+
+            <div className="flex bg-white/5 p-1.5 rounded-2xl border border-white/5">
+              <button onClick={() => setCourseViewTab('matrix')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${courseViewTab === 'matrix' ? 'bg-white text-slate-900' : 'hover:text-white'}`}>Jadval (Matrix)</button>
+              <button onClick={() => setCourseViewTab('rating')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${courseViewTab === 'rating' ? 'bg-white text-slate-900' : 'hover:text-white'}`}>Reyting</button>
+              <button onClick={() => setCourseViewTab('tasks')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${courseViewTab === 'tasks' ? 'bg-white text-slate-900' : 'hover:text-white'}`}>Vazifalar</button>
             </div>
           </div>
 
-          {courseTab === 'matrix' && renderMatrix(selectedCourseId)}
-
-          {courseTab === 'tasks' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm h-fit">
-                <h3 className="text-xl font-black text-slate-800 mb-6">Yangi Vazifa</h3>
-                <div className="space-y-4">
-                  <input type="text" placeholder="Mavzu nomi" className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm focus:border-indigo-600 outline-none" value={newTask.title} onChange={e => setNewTask({...newTask, title: e.target.value})} />
-                  <textarea placeholder="Vazifa sharti..." className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm focus:border-indigo-600 outline-none h-32" value={newTask.description} onChange={e => setNewTask({...newTask, description: e.target.value})} />
-                  
-                  <label className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 transition">
-                    <input type="checkbox" className="w-5 h-5 accent-indigo-600" checked={newTask.isClassTask} onChange={e => setNewTask({...newTask, isClassTask: e.target.checked})} />
-                    <span className="text-xs font-bold text-slate-600 uppercase tracking-widest">Darsda (Taymer bilan)</span>
-                  </label>
-
-                  <button onClick={() => { if(!newTask.title) return; onAddTask({ id: Math.random().toString(36).substr(2, 9), courseId: selectedCourseId, ...newTask, order: tasks.length + 1 }); setNewTask({title:'', description:'', isClassTask: false}); }} className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold shadow-lg">E'lon qilish</button>
-                </div>
+          {courseViewTab === 'matrix' && (
+            <div className="bg-slate-900/80 rounded-[3rem] border border-white/5 overflow-hidden shadow-2xl">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead className="bg-white/5 border-b border-white/10">
+                    <tr>
+                      <th className="px-10 py-8 text-[10px] font-black text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-900">O'quvchi</th>
+                      {courseTasks.map(task => (
+                        <th key={task.id} className="px-6 py-8 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center min-w-[150px]">Vazifa {task.order}</th>
+                      ))}
+                      <th className="px-10 py-8 text-[10px] font-black text-indigo-400 uppercase tracking-widest text-right">Ball</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {enrolledStudents.map(student => {
+                      const studentResults = results.filter(r => r.userId === student.id && r.courseId === selectedCourseId);
+                      const totalScore = studentResults.reduce((acc, r) => acc + (r.adminGrade || r.grade), 0);
+                      return (
+                        <tr key={student.id} className="hover:bg-white/5 transition-colors group">
+                          <td className="px-10 py-6 sticky left-0 bg-slate-900 group-hover:bg-slate-800 transition-colors font-bold text-white">{student.firstName} {student.lastName}</td>
+                          {courseTasks.map(task => {
+                            const result = studentResults.find(r => r.taskId === task.id);
+                            return (
+                              <td key={task.id} className="px-6 py-6 text-center">
+                                {result ? (
+                                  <button onClick={() => setReviewResult(result)} className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:scale-110 transition flex items-center justify-center mx-auto">
+                                    <i className="fas fa-check"></i>
+                                  </button>
+                                ) : (
+                                  <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-500/20 flex items-center justify-center mx-auto"><i className="fas fa-times"></i></div>
+                                )}
+                              </td>
+                            );
+                          })}
+                          <td className="px-10 py-6 text-right font-black text-indigo-400">{totalScore}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-              <div className="lg:col-span-2 space-y-4">
-                {tasks.filter(t => t.courseId === selectedCourseId).map(t => (
-                  <div key={t.id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between">
+            </div>
+          )}
+
+          {courseViewTab === 'tasks' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+              <div className="bg-white/5 p-10 rounded-[3rem] border border-white/5">
+                <h3 className="text-xl font-black mb-8 text-white">Yangi Vazifa Qo'shish</h3>
+                <form onSubmit={handleCreateTask} className="space-y-6">
+                  <input required value={taskForm.title} onChange={e => setTaskForm({...taskForm, title: e.target.value})} className="w-full bg-slate-800 border border-white/10 rounded-2xl px-6 py-4 outline-none" placeholder="Vazifa Sarlavhasi" />
+                  <textarea required value={taskForm.description} onChange={e => setTaskForm({...taskForm, description: e.target.value})} className="w-full bg-slate-800 border border-white/10 rounded-2xl px-6 py-4 outline-none h-32" placeholder="Vazifa Tavsifi..." />
+                  <button type="submit" className="w-full py-4 bg-indigo-600 rounded-xl font-black uppercase text-xs tracking-widest shadow-xl shadow-indigo-500/20">Vazifani Qo'shish</button>
+                </form>
+              </div>
+              <div className="space-y-4">
+                <h3 className="text-xl font-black mb-4 text-white">Kursdagi Vazifalar ({courseTasks.length})</h3>
+                {courseTasks.map(t => (
+                  <div key={t.id} className="bg-white/5 p-6 rounded-3xl border border-white/5 flex items-center justify-between">
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-bold text-slate-800">{t.title}</h4>
-                        {t.isClassTask && <span className="text-[8px] font-black bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded">DARSONLINE</span>}
-                      </div>
-                      <p className="text-xs text-slate-400 mt-1">{t.description}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {t.isClassTask && (
-                        <button 
-                          onClick={() => handleStartTimer(t.id)}
-                          className="px-4 py-2 bg-amber-500 text-white text-xs font-bold rounded-xl hover:bg-amber-600 transition flex items-center gap-2"
-                        >
-                          <i className="fas fa-stopwatch"></i> {t.timerEnd ? 'Taymerni yangilash' : 'Taymerni boshlash'}
-                        </button>
-                      )}
-                      <button className="text-slate-200 hover:text-rose-500 transition px-2"><i className="fas fa-trash-alt"></i></button>
+                      <div className="text-[10px] font-bold text-slate-500">VAZIFA {t.order}</div>
+                      <div className="font-bold text-white">{t.title}</div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
           )}
+
+          {courseViewTab === 'rating' && (
+            <div className="max-w-3xl mx-auto space-y-4">
+               {enrolledStudents
+                .map(s => ({ ...s, total: results.filter(r => r.userId === s.id && r.courseId === selectedCourseId).reduce((a, b) => a + (b.adminGrade || b.grade), 0) }))
+                .sort((a,b) => b.total - a.total)
+                .map((s, i) => (
+                  <div key={s.id} className="bg-white/5 p-6 rounded-3xl border border-white/5 flex justify-between items-center">
+                    <div className="flex items-center gap-6">
+                      <span className="text-2xl font-black text-slate-700 w-8">{i + 1}</span>
+                      <div className="font-bold text-white">{s.firstName} {s.lastName}</div>
+                    </div>
+                    <div className="text-2xl font-black text-indigo-400">{s.total} XP</div>
+                  </div>
+                ))}
+            </div>
+          )}
         </div>
       )}
 
-      {reviewModal && (
-        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-xl z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[3rem] p-10 w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-2xl relative border border-white/20">
-            <button onClick={() => setReviewModal(null)} className="absolute top-8 right-8 text-slate-300 hover:text-slate-800 transition text-3xl"><i className="fas fa-times"></i></button>
-            <div className="flex items-center gap-6 mb-12">
-              <div className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center text-white text-4xl shadow-2xl shadow-indigo-200 rotate-3"><i className="fas fa-robot"></i></div>
-              <div>
-                <h2 className="text-3xl font-black text-slate-800">IT Mentor Tahlili</h2>
-                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">{reviewModal.userName} • AI Score: {reviewModal.grade}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-              <div className="space-y-8">
-                <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100">
-                  <h3 className="text-xs font-black text-rose-500 uppercase tracking-widest mb-4">Kod xatoliklari</h3>
-                  <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{reviewModal.errors}</p>
-                </div>
-                <div className="bg-slate-900 p-8 rounded-[2.5rem]">
-                  <h3 className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-4">Optimallashtirilgan yechim</h3>
-                  <pre className="text-xs text-indigo-100 font-mono overflow-x-auto p-4 bg-slate-800 rounded-2xl border border-slate-700">{reviewModal.solution}</pre>
-                </div>
-              </div>
-              <div className="bg-white p-10 rounded-[2.5rem] border-4 border-indigo-50 flex flex-col justify-between">
-                <div>
-                  <h3 className="text-xl font-black text-slate-800 mb-6 underline decoration-indigo-200 decoration-4">Mentor Qarori</h3>
-                  <p className="text-sm text-slate-500 italic mb-10 leading-relaxed">"{reviewModal.explanation}"</p>
-                  <div className="space-y-4">
-                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Admin Balli (0-100)</label>
-                    <input type="number" className="w-full bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] px-8 py-6 text-4xl font-black text-indigo-600 focus:border-indigo-600 outline-none transition" value={adminBall} onChange={e => setAdminBall(e.target.value)} />
+      {reviewResult && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/95 backdrop-blur-xl overflow-y-auto">
+          <div className="bg-slate-900 w-full max-w-5xl p-12 rounded-[4rem] border border-white/10 shadow-2xl space-y-8 my-10">
+             <div className="flex justify-between items-center border-b border-white/10 pb-8">
+                <h3 className="text-3xl font-black text-white">O'quvchi Natijasi Tahlili</h3>
+                <button onClick={() => setReviewResult(null)} className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition"><i className="fas fa-times"></i></button>
+             </div>
+             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+               <div className="space-y-4">
+                  <h4 className="text-xs font-black uppercase text-slate-500">O'quvchi Javobi</h4>
+                  <div className="bg-slate-800 p-6 rounded-3xl border border-white/5 font-mono text-sm text-indigo-300 h-64 overflow-y-auto">
+                    <pre className="whitespace-pre-wrap">{reviewResult.solution}</pre>
+                  </div>
+               </div>
+               <div className="space-y-4">
+                  <h4 className="text-xs font-black uppercase text-slate-500">AI Mentor Tahlili</h4>
+                  <div className="bg-indigo-900/20 p-6 rounded-3xl border border-indigo-500/20 italic text-indigo-200">"{reviewResult.result}"</div>
+                  <div className="bg-rose-900/10 p-6 rounded-3xl border border-rose-500/10 text-rose-300 text-sm">{reviewResult.errors}</div>
+               </div>
+             </div>
+             <div className="bg-white/5 p-10 rounded-[3rem] border border-white/5 flex flex-col md:flex-row items-center justify-between gap-10">
+                <div className="flex gap-10 text-center">
+                  <div>
+                    <div className="text-4xl font-black text-indigo-400">{reviewResult.grade}</div>
+                    <div className="text-[10px] uppercase font-bold text-slate-600">AI Ball</div>
+                  </div>
+                  <div>
+                    <div className="text-4xl font-black text-emerald-400">{reviewResult.adminGrade || '--'}</div>
+                    <div className="text-[10px] uppercase font-bold text-slate-600">Admin Ball</div>
                   </div>
                 </div>
-                <button onClick={() => { if(!adminBall) return; onGrade(reviewModal.id, parseInt(adminBall)); setReviewModal(null); }} className="w-full bg-indigo-600 text-white py-6 rounded-[1.5rem] font-black text-xl mt-12 hover:bg-indigo-700 active:scale-95 transition shadow-2xl shadow-indigo-100">Saqlash va Tasdiqlash</button>
-              </div>
-            </div>
+                <div className="flex gap-4">
+                  <input type="number" placeholder="Ball..." className="w-32 bg-slate-800 border-none rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-600" id="grade-input" />
+                  <button onClick={() => {
+                    const val = parseInt((document.getElementById('grade-input') as HTMLInputElement).value);
+                    if(!isNaN(val)) { onGrade(reviewResult.id, val); setReviewResult(null); }
+                  }} className="bg-indigo-600 px-8 py-3 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-indigo-700 transition">Baholash</button>
+                </div>
+             </div>
           </div>
+        </div>
+      )}
+
+      {activeSection === 'requests' && (
+        <div className="max-w-4xl mx-auto space-y-6">
+          <h2 className="text-3xl font-black text-white">Yangi Arizalar</h2>
+          {requests.map(r => (
+            <div key={r.id} className="bg-slate-900/80 p-8 rounded-[3rem] border border-white/10 flex items-center justify-between group hover:border-indigo-500/30 transition">
+               <div>
+                  <h4 className="text-xl font-black text-white">{r.userName}</h4>
+                  <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest">{r.courseTitle}</p>
+               </div>
+               <button onClick={() => onApprove(r.id)} className="w-14 h-14 bg-emerald-500 text-white rounded-2xl flex items-center justify-center shadow-xl hover:scale-110 transition"><i className="fas fa-check"></i></button>
+            </div>
+          ))}
+          {requests.length === 0 && <div className="py-32 text-center text-slate-500 italic bg-white/5 rounded-[3rem] border-2 border-dashed border-white/5">Yangi arizalar yo'q.</div>}
         </div>
       )}
     </div>

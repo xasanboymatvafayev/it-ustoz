@@ -9,6 +9,13 @@ export const Subject = {
 
 export type SubjectType = typeof Subject[keyof typeof Subject];
 
+export interface QuizQuestion {
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  explanation: string;
+}
+
 export interface User {
   id: string;
   username: string;
@@ -21,16 +28,28 @@ export interface User {
   role: 'user' | 'admin' | 'parent';
   enrolledCourses: string[];
   avatar?: string;
+  xp?: number; // Gamifikatsiya uchun tajriba ochkolari
+  coins?: number; // Virtual valyuta
 }
 
-export interface ChatMessage {
+export interface TaskResult {
   id: string;
-  courseId: string;
+  taskId: string;
   userId: string;
   userName: string;
-  userAvatar?: string;
-  text: string;
+  result: string;
+  errors: string;
+  solution: string;
+  explanation: string;
+  grade: number;
+  adminGrade?: number;
+  status: 'pending' | 'reviewed';
   timestamp: number;
+  courseId: string;
+  mistakePatterns?: string[];
+  audioData?: string;
+  cognitiveImpact: number;
+  marketabilityBoost: number;
 }
 
 export interface Course {
@@ -61,18 +80,12 @@ export interface CourseTask {
   timerEnd?: number;
 }
 
-export interface TaskResult {
+export interface ChatMessage {
   id: string;
-  taskId: string;
+  courseId: string;
   userId: string;
   userName: string;
-  result: string;
-  errors: string;
-  solution: string;
-  explanation: string;
-  grade: number;
-  adminGrade?: number;
-  status: 'pending' | 'reviewed';
+  userAvatar?: string;
+  text: string;
   timestamp: number;
-  courseId: string;
 }

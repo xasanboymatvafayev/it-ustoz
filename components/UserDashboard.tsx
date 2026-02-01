@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { User, Course, EnrollmentRequest, CourseTask, TaskResult } from '../types';
 import TaskForm from './TaskForm';
 import ResultView from './ResultView';
-import CourseChat from './CourseChat';
+import QuizArena from './QuizArena';
 
 interface UserDashboardProps {
   user: User;
@@ -17,108 +17,106 @@ interface UserDashboardProps {
 const UserDashboard: React.FC<UserDashboardProps> = ({ user, courses, requests, tasks, onEnroll, onTaskSubmit }) => {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [latestResult, setLatestResult] = useState<TaskResult | null>(null);
-  const [activeTab, setActiveTab] = useState<'tasks' | 'chat'>('tasks');
-  const [timeLeft, setTimeLeft] = useState<Record<string, number>>({});
+  const [activeTab, setActiveTab] = useState<'courses' | 'tasks' | 'ranking' | 'quiz'>('courses');
+  const [showQuiz, setShowQuiz] = useState(false);
 
   const isEnrolled = (courseId: string) => user.enrolledCourses.includes(courseId);
-  const isPending = (courseId: string) => requests.some(r => r.courseId === courseId && r.userId === user.id && r.status === 'pending');
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const now = Date.now();
-      const newTimeLeft: Record<string, number> = {};
-      tasks.forEach(task => {
-        if (task.timerEnd && task.timerEnd > now) {
-          newTimeLeft[task.id] = Math.max(0, Math.floor((task.timerEnd - now) / 1000));
-        }
-      });
-      setTimeLeft(newTimeLeft);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [tasks]);
-
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
-  };
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-12 animate-fade-in">
       {!selectedCourse ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {courses.map(course => (
-            <div key={course.id} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all group">
-              <div className="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-indigo-500 mb-6 group-hover:scale-110 transition-transform">
-                <i className="fas fa-code"></i>
-              </div>
-              <h3 className="text-xl font-black text-slate-800 mb-2">{course.title}</h3>
-              <div className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-3">{course.subject}</div>
-              <p className="text-slate-500 text-sm mb-6 line-clamp-2">{course.description}</p>
-              
-              {isEnrolled(course.id) ? (
-                <button onClick={() => setSelectedCourse(course)} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition shadow-lg shadow-indigo-100">Darsxonaga kirish</button>
-              ) : isPending(course.id) ? (
-                <button disabled className="w-full py-3 bg-slate-100 text-slate-400 rounded-xl font-bold text-sm">A'zolik kutilmoqda...</button>
-              ) : (
-                <button onClick={() => onEnroll(course.id)} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition shadow-lg">Kursga yozilish</button>
-              )}
+        <>
+          <div className="flex flex-col md:flex-row justify-between items-end gap-6 mb-12">
+            <div>
+              <h2 className="text-4xl font-black text-white tracking-tighter mb-2">Salom, {user.firstName}! 👋</h2>
+              <p className="text-slate-500 font-medium italic">Bugun yangi marralarni zabt etish vaqti keldi.</p>
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-6">
-          <div className="flex flex-col md:flex-row items-center justify-between bg-white p-4 rounded-2xl border border-slate-100 gap-4 shadow-sm">
-            <button onClick={() => { setSelectedCourse(null); setLatestResult(null); }} className="text-slate-400 hover:text-indigo-600 font-bold text-sm flex items-center gap-2"><i className="fas fa-chevron-left"></i> Orqaga</button>
-            <div className="flex bg-slate-100 p-1 rounded-xl">
-              <button onClick={() => setActiveTab('tasks')} className={`px-6 py-2 rounded-lg text-xs font-bold transition ${activeTab === 'tasks' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Topshiriqlar</button>
-              <button onClick={() => setActiveTab('chat')} className={`px-6 py-2 rounded-lg text-xs font-bold transition ${activeTab === 'chat' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Guruh Chati</button>
-            </div>
-            <div className="text-right hidden md:block">
-              <h2 className="text-lg font-black text-slate-800">{selectedCourse.title}</h2>
-              <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-tighter">{selectedCourse.subject}</p>
+            <div className="flex bg-white/5 p-1.5 rounded-2xl border border-white/5">
+              <button onClick={() => setActiveTab('courses')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${activeTab === 'courses' ? 'bg-white text-slate-900' : 'hover:text-white'}`}>Kurslar</button>
+              <button onClick={() => setActiveTab('ranking')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${activeTab === 'ranking' ? 'bg-white text-slate-900' : 'hover:text-white'}`}>Reyting</button>
+              <button onClick={() => setActiveTab('quiz')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${activeTab === 'quiz' ? 'bg-white text-slate-900' : 'hover:text-white'}`}>Quiz Arena</button>
             </div>
           </div>
 
-          {activeTab === 'tasks' ? (
-            !latestResult ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="space-y-4">
-                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Mavjud vazifalar</h3>
-                  <div className="space-y-3">
-                    {tasks.filter(t => t.courseId === selectedCourse.id).map(task => (
-                      <div key={task.id} className={`bg-white p-5 rounded-2xl border transition shadow-sm ${timeLeft[task.id] ? 'border-amber-400 ring-2 ring-amber-100' : 'border-slate-100'}`}>
-                        <div className="flex justify-between items-start">
-                          <h4 className="font-bold text-slate-800 flex items-center gap-2">
-                            <i className={`fas ${task.isClassTask ? 'fa-stopwatch text-amber-500' : 'fa-file-code text-indigo-400'}`}></i> {task.title}
-                          </h4>
-                          {timeLeft[task.id] && (
-                            <div className="bg-amber-500 text-white px-3 py-1 rounded-lg font-black text-xs animate-pulse">
-                              {formatTime(timeLeft[task.id])}
-                            </div>
-                          )}
-                          {task.timerEnd && task.timerEnd < Date.now() && (
-                            <div className="bg-rose-100 text-rose-600 px-3 py-1 rounded-lg font-black text-[10px] uppercase">Vaqt tugadi</div>
-                          )}
-                        </div>
-                        <p className="text-xs text-slate-500 mt-2 leading-relaxed">{task.description}</p>
-                      </div>
-                    ))}
-                  </div>
+          {activeTab === 'courses' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {courses.map(course => (
+                <div key={course.id} className="aether-card-dark p-8 rounded-[2.5rem] group hover:border-indigo-500/40 transition-all duration-500 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform"><i className="fas fa-laptop-code text-8xl"></i></div>
+                  <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center text-indigo-400 mb-8 border border-white/5"><i className="fas fa-terminal"></i></div>
+                  <h3 className="text-2xl font-black text-white mb-3 group-hover:text-indigo-400 transition">{course.title}</h3>
+                  <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6">{course.subject}</div>
+                  {isEnrolled(course.id) ? (
+                    <button onClick={() => setSelectedCourse(course)} className="w-full py-4 bg-white/5 text-white rounded-2xl font-black text-xs uppercase tracking-widest border border-white/5 hover:bg-indigo-600 transition shadow-xl">Kursga Kirish</button>
+                  ) : (
+                    <button onClick={() => onEnroll(course.id)} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition shadow-2xl">A'zo bo'lish</button>
+                  )}
                 </div>
-                
-                <div>
+              ))}
+            </div>
+          )}
+
+          {activeTab === 'ranking' && (
+            <div className="max-w-3xl mx-auto space-y-4">
+               <h3 className="text-2xl font-black text-white text-center mb-8">Talabalar Reytingi</h3>
+               <div className="bg-white/5 p-4 rounded-[2.5rem] border border-white/5">
+                 {/* Bu yerga umumiy reyting logic qo'shiladi (users array kerak) */}
+                 <p className="text-center text-slate-500 py-10">Reyting tez kunda yangilanadi...</p>
+               </div>
+            </div>
+          )}
+
+          {activeTab === 'quiz' && (
+            <div className="flex flex-col items-center justify-center py-20 bg-indigo-600/10 rounded-[4rem] border border-indigo-500/20 text-center">
+              <i className="fas fa-brain text-6xl text-indigo-500 mb-8"></i>
+              <h3 className="text-3xl font-black text-white mb-4">Quiz Arena</h3>
+              <p className="text-slate-400 max-w-md mb-10">AI tomonidan yaratilgan testlar orqali o'z bilimlaringizni sinab ko'ring va XP to'plang!</p>
+              <button onClick={() => setShowQuiz(true)} className="bg-indigo-600 text-white px-12 py-5 rounded-[2rem] font-black uppercase text-sm tracking-widest shadow-2xl shadow-indigo-600/20 hover:scale-105 transition">Testni Boshlash</button>
+              {showQuiz && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-md">
+                   <QuizArena subject="Fullstack Development" onComplete={(s) => { alert(`Siz ${s} ta to'g'ri javob berdingiz!`); setShowQuiz(false); }} onClose={() => setShowQuiz(false)} />
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="space-y-8">
+          <div className="flex items-center justify-between mb-8">
+            <button onClick={() => { setSelectedCourse(null); setLatestResult(null); }} className="text-slate-500 hover:text-white font-black text-xs uppercase tracking-widest flex items-center gap-3 transition">
+              <i className="fas fa-arrow-left"></i> Kurslarga Qaytish
+            </button>
+            <div className="text-right">
+              <h2 className="text-2xl font-black text-white leading-none mb-1">{selectedCourse.title}</h2>
+              <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{selectedCourse.subject}</span>
+            </div>
+          </div>
+
+          {!latestResult ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+              <div className="space-y-6">
+                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Vazifalar Ro'yxati</h3>
+                <div className="space-y-4">
+                  {tasks.filter(t => t.courseId === selectedCourse.id).map(task => (
+                    <div key={task.id} className="bg-white/5 p-6 rounded-3xl border border-white/5 hover:border-indigo-500/30 transition">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-bold text-white uppercase text-xs tracking-wider">Vazifa {task.order}: {task.title}</h4>
+                      </div>
+                      <p className="text-xs text-slate-500 leading-relaxed mb-4">{task.description}</p>
+                    </div>
+                  ))}
+                  {tasks.filter(t => t.courseId === selectedCourse.id).length === 0 && (
+                    <div className="p-10 text-center bg-white/5 rounded-3xl border-2 border-dashed border-white/5 text-slate-600 italic">Hali ushbu kurs uchun vazifalar belgilanmagan.</div>
+                  )}
+                </div>
+              </div>
+              <div className="relative">
+                <div className="sticky top-24">
                   <TaskForm 
                     userName={user.firstName} 
                     courseTitle={selectedCourse.title}
                     courseSubject={selectedCourse.subject}
                     onResult={(res) => {
-                      // Agar taymer tugagan bo'lsa topshirishni bloklash (bu yerda generic check)
-                      const activeClassTask = tasks.find(t => t.courseId === selectedCourse.id && t.isClassTask && t.timerEnd);
-                      if (activeClassTask && activeClassTask.timerEnd && activeClassTask.timerEnd < Date.now()) {
-                        alert("Kechirasiz, darsdagi vazifa uchun belgilangan vaqt tugadi!");
-                        return;
-                      }
                       const fullRes = { ...res, courseId: selectedCourse.id, userId: user.id };
                       onTaskSubmit(fullRes);
                       setLatestResult(fullRes);
@@ -126,13 +124,9 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ user, courses, requests, 
                   />
                 </div>
               </div>
-            ) : (
-              <ResultView result={latestResult} onReset={() => setLatestResult(null)} />
-            )
-          ) : (
-            <div className="max-w-2xl mx-auto w-full">
-              <CourseChat user={user} courseId={selectedCourse.id} />
             </div>
+          ) : (
+            <ResultView result={latestResult} onReset={() => setLatestResult(null)} />
           )}
         </div>
       )}
