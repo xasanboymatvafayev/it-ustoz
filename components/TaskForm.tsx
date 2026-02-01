@@ -18,7 +18,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ userName, courseTitle, courseSubjec
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
   useEffect(() => {
-    if (activeTask?.timerEnd) {
+    if (activeTask?.timerEnd && activeTask.timerEnd > Date.now()) {
       const interval = setInterval(() => {
         const diff = activeTask.timerEnd! - Date.now();
         if (diff <= 0) {
@@ -29,6 +29,8 @@ const TaskForm: React.FC<TaskFormProps> = ({ userName, courseTitle, courseSubjec
         }
       }, 1000);
       return () => clearInterval(interval);
+    } else if (activeTask?.timerEnd && activeTask.timerEnd <= Date.now()) {
+      setTimeLeft(0);
     } else {
       setTimeLeft(null);
     }
@@ -36,7 +38,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ userName, courseTitle, courseSubjec
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!task.trim() || (timeLeft === 0)) return;
+    if (!task.trim() || timeLeft === 0) return;
 
     setLoading(true);
     setError('');
@@ -45,7 +47,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ userName, courseTitle, courseSubjec
       const result = await checkTask(userName, courseSubject, task, courseTitle);
       onResult({ ...result, taskId: activeTask?.id || 'sovereign' });
     } catch (err: any) {
-      setError(err.message || "AI tahlilida xatolik yuz berdi");
+      setError(err.message || "Xatolik yuz berdi");
     } finally {
       setLoading(false);
     }
@@ -57,50 +59,50 @@ const TaskForm: React.FC<TaskFormProps> = ({ userName, courseTitle, courseSubjec
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  const isExpired = timeLeft === 0;
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="bg-slate-900 text-white p-6 rounded-3xl border border-slate-800 shadow-xl relative overflow-hidden">
+      <div className={`bg-slate-900 p-8 rounded-[2.5rem] border ${isExpired ? 'border-rose-500/50 opacity-80' : 'border-slate-800'} shadow-2xl relative overflow-hidden transition-all`}>
         {timeLeft !== null && (
-          <div className={`absolute top-0 right-0 p-4 font-black text-xl flex items-center gap-2 ${timeLeft > 0 ? 'text-rose-500 animate-pulse' : 'text-slate-600'}`}>
+          <div className={`absolute top-0 right-0 p-6 font-black text-2xl flex items-center gap-2 ${isExpired ? 'text-rose-500' : 'text-indigo-500 animate-pulse'}`}>
             <i className="fas fa-stopwatch"></i>
-            {timeLeft > 0 ? formatTime(timeLeft) : "VAQT TUGADI"}
+            {isExpired ? "VAQT TUGADI" : formatTime(timeLeft)}
           </div>
         )}
 
-        <div className="flex items-center gap-4 mb-4">
-          <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white">
-            <i className="fas fa-terminal"></i>
+        <div className="flex items-center gap-4 mb-8">
+          <div className={`w-14 h-14 ${isExpired ? 'bg-rose-500/20 text-rose-500' : 'bg-indigo-600 text-white'} rounded-2xl flex items-center justify-center text-2xl`}>
+            <i className="fas fa-code"></i>
           </div>
           <div>
-            <h2 className="text-xl font-bold">
-              {activeTask ? `Vazifa: ${activeTask.title}` : "Topshiriqni topshirish"}
-            </h2>
-            <p className="text-slate-400 text-xs uppercase tracking-widest">{courseSubject}</p>
+            <h2 className="text-xl font-black text-white">{activeTask ? activeTask.title : "Topshiriq yuborish"}</h2>
+            <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">{courseSubject}</p>
           </div>
         </div>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <textarea
-            disabled={timeLeft === 0}
+            disabled={loading || isExpired}
             value={task}
             onChange={(e) => setTask(e.target.value)}
-            rows={10}
-            placeholder={timeLeft === 0 ? "Vaqt tugadi, javob yuborib bo'lmaydi." : "Kodingizni yoki javobingizni bu yerga joylashtiring..."}
-            className={`w-full p-6 rounded-2xl bg-slate-800 border border-slate-700 focus:bg-slate-900 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition text-sm font-mono text-indigo-100 ${timeLeft === 0 ? 'opacity-50 grayscale' : ''}`}
+            rows={12}
+            placeholder={isExpired ? "Bu dars uchun vaqt tugagan. Keyingi darsni kuting." : "Javobingizni yoki kodingizni bu yerga kiriting..."}
+            className={`w-full p-6 rounded-2xl bg-slate-800/50 border ${isExpired ? 'border-rose-500/20' : 'border-slate-700 focus:border-indigo-500'} outline-none transition text-sm font-mono text-indigo-100 placeholder-slate-600`}
           ></textarea>
 
-          {error && (
-            <div className="p-4 bg-red-900/20 text-red-400 rounded-2xl text-sm border border-red-900/30">
-              <i className="fas fa-exclamation-triangle"></i> {error}
-            </div>
-          )}
+          {error && <div className="p-4 bg-rose-500/10 text-rose-500 rounded-xl text-xs font-bold border border-rose-500/20"><i className="fas fa-warning mr-2"></i>{error}</div>}
 
           <button
             type="submit"
-            disabled={loading || !task.trim() || timeLeft === 0}
-            className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-bold text-lg hover:bg-indigo-700 disabled:opacity-50 disabled:grayscale transition shadow-xl"
+            disabled={loading || !task.trim() || isExpired}
+            className={`w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.3em] transition-all shadow-2xl ${
+              isExpired 
+                ? 'bg-rose-900/20 text-rose-500 border border-rose-500/20 grayscale cursor-not-allowed' 
+                : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-600/20'
+            }`}
           >
-            {timeLeft === 0 ? "VAQT TUGADI" : loading ? "AI Mentor tekshirmoqda..." : "Kodni yuborish"}
+            {isExpired ? "Muddati o'tgan" : loading ? "AI TAHLIL QILMOQDA..." : "TOPSHIRIQNI YUBORISH"}
           </button>
         </form>
       </div>
