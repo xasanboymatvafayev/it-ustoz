@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, Course, EnrollmentRequest, CourseTask, TaskResult } from './types.ts';
 import Auth from './components/Auth.tsx';
@@ -7,7 +6,7 @@ import AdminPanel from './components/AdminPanel.tsx';
 import ProfileView from './components/ProfileView.tsx';
 import UserDashboard from './components/UserDashboard.tsx';
 import AdminLoginModal from './components/AdminLoginModal.tsx';
-import { api, isLiveDatabase } from './services/apiService.ts';
+import { api } from './services/apiService.ts';
 import { sendVerificationEmail } from './services/emailService.ts';
 
 const App: React.FC = () => {
@@ -43,7 +42,7 @@ const App: React.FC = () => {
       setRequests(req || []);
       
       const savedUserId = localStorage.getItem('it_academy_current_user_id');
-      if (savedUserId) {
+      if (savedUserId && !currentUser) {
         const freshUser = (u || []).find((user: User) => user.id === savedUserId);
         if (freshUser) {
           setCurrentUser(freshUser);
@@ -55,12 +54,11 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     syncData();
-    // Taymerlar va yangi xabarlarni kuzatib borish uchun har 10 soniyada yangilash
-    const interval = setInterval(syncData, 10000);
+    const interval = setInterval(syncData, 5000); // Tezkor yangilanish (taymer uchun)
     return () => clearInterval(interval);
   }, [syncData]);
 
