@@ -29,9 +29,15 @@ const App: React.FC = () => {
 
   const syncData = useCallback(async () => {
     try {
+      // API dan ma'lumotlarni parallel olish, xato kelsa ham davom etish
       const [u, c, t, r, req] = await Promise.all([
-        api.getUsers(), api.getCourses(), api.getTasks(), api.getResults(), api.getRequests()
+        api.getUsers().catch(() => []),
+        api.getCourses().catch(() => []),
+        api.getTasks().catch(() => []),
+        api.getResults().catch(() => []),
+        api.getRequests().catch(() => [])
       ]);
+
       setUsers(u || []);
       setCourses(c || []);
       setTasks(t || []);
@@ -41,24 +47,21 @@ const App: React.FC = () => {
       
       const savedUserId = localStorage.getItem('it_academy_current_user_id');
       if (savedUserId) {
-        const freshUser = u?.find((user: User) => user.id === savedUserId);
+        const freshUser = (u || []).find((user: User) => user.id === savedUserId);
         if (freshUser) {
           setCurrentUser(freshUser);
           setAuthStep('app');
         }
       }
     } catch (e) {
-      console.log("Sinxronlashda xatolik.");
+      console.error("Ma'lumotlarni sinxronlashda xatolik:", e);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    const init = async () => {
-      setIsLoading(true);
-      await syncData();
-      setIsLoading(false);
-    };
-    init();
+    syncData();
   }, [syncData]);
 
   const handleLogin = (un: string, pw: string) => {
@@ -95,7 +98,7 @@ const App: React.FC = () => {
   if (isLoading) return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-6">
       <div className="w-16 h-16 border-4 border-indigo-600 border-t-white rounded-full animate-spin"></div>
-      <p className="text-white font-black text-sm uppercase tracking-[0.5em] animate-pulse">SOVEREIGN AI</p>
+      <p className="text-white font-black text-sm uppercase tracking-[0.5em] animate-pulse">AI USTOZ YUKLANMOQDA...</p>
     </div>
   );
 
@@ -165,7 +168,7 @@ const App: React.FC = () => {
               const r: EnrollmentRequest = { id: Math.random().toString(36).substr(2, 9), userId: currentUser.id, userName: currentUser.firstName, courseId: cId, courseTitle: courses.find(c => c.id === cId)?.title || '', status: 'pending' };
               await api.saveRequest(r);
               await syncData();
-              alert("Sorov yuborildi. Admin tasdiqlashini kuting.");
+              alert("So'rov yuborildi. Admin tasdiqlashini kuting.");
             }}
             onTaskSubmit={async (res) => {
               await api.saveResult(res);

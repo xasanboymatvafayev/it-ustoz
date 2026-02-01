@@ -1,10 +1,10 @@
 
 import React, { useState } from 'react';
-import { User, Course, EnrollmentRequest, CourseTask, TaskResult } from '../types';
-import TaskForm from './TaskForm';
-import ResultView from './ResultView';
-import QuizArena from './QuizArena';
-import CourseChat from './CourseChat';
+import { User, Course, EnrollmentRequest, CourseTask, TaskResult } from '../types.ts';
+import TaskForm from './TaskForm.tsx';
+import ResultView from './ResultView.tsx';
+import QuizArena from './QuizArena.tsx';
+import CourseChat from './CourseChat.tsx';
 
 interface UserDashboardProps {
   user: User;

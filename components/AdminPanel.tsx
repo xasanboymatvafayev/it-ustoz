@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { User, Course, CourseTask, TaskResult, EnrollmentRequest, Subject, SubjectType } from '../types';
+import { User, Course, CourseTask, TaskResult, EnrollmentRequest, Subject, SubjectType } from '../types.ts';
 
 interface AdminPanelProps {
   users: User[];
@@ -25,10 +25,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [showAddCourse, setShowAddCourse] = useState(false);
   const [reviewResult, setReviewResult] = useState<TaskResult | null>(null);
 
-  // Vazifa yaratish formasi uchun state
   const [taskForm, setTaskForm] = useState({ title: '', description: '' });
-
-  // Kurs yaratish formasi uchun state
   const [courseForm, setCourseForm] = useState({
     title: '',
     description: '',
@@ -94,30 +91,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <h3 className="text-2xl font-black text-white mb-2 group-hover:text-indigo-400 transition">{c.title}</h3>
                 <p className="text-slate-500 text-sm mb-8 line-clamp-2">{c.description}</p>
                 <div className="flex justify-between items-center">
-                  <div className="text-[10px] font-black text-slate-600 uppercase">Boshqarish <i className="fas fa-arrow-right ml-2"></i></div>
+                  <span className="text-[10px] font-black text-slate-600 uppercase">Boshqarish <i className="fas fa-arrow-right ml-2"></i></span>
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {showAddCourse && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
-          <div className="bg-slate-900 w-full max-w-2xl p-12 rounded-[3.5rem] border border-white/10 shadow-2xl">
-            <h3 className="text-3xl font-black text-white mb-8 text-center">Yangi Kurs Yaratish</h3>
-            <form onSubmit={handleCreateCourse} className="space-y-6">
-              <input required value={courseForm.title} onChange={e => setCourseForm({...courseForm, title: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-indigo-500" placeholder="Kurs Nomi" />
-              <select value={courseForm.subject} onChange={e => setCourseForm({...courseForm, subject: e.target.value as SubjectType})} className="w-full bg-slate-800 border border-white/10 rounded-2xl px-6 py-4 outline-none">
-                {Object.values(Subject).map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <input required value={courseForm.teacher} onChange={e => setCourseForm({...courseForm, teacher: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-indigo-500" placeholder="O'qituvchi Ismi" />
-              <textarea required value={courseForm.description} onChange={e => setCourseForm({...courseForm, description: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 outline-none h-32" placeholder="Kurs haqida batafsil..." />
-              <div className="flex gap-4">
-                <button type="button" onClick={() => setShowAddCourse(false)} className="flex-1 py-4 rounded-xl font-bold bg-white/5">Bekor qilish</button>
-                <button type="submit" className="flex-1 py-4 rounded-xl font-bold bg-indigo-600">Kursni Saqlash</button>
-              </div>
-            </form>
           </div>
         </div>
       )}
@@ -207,23 +184,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
           )}
+        </div>
+      )}
 
-          {courseViewTab === 'rating' && (
-            <div className="max-w-3xl mx-auto space-y-4">
-               {enrolledStudents
-                .map(s => ({ ...s, total: results.filter(r => r.userId === s.id && r.courseId === selectedCourseId).reduce((a, b) => a + (b.adminGrade || b.grade), 0) }))
-                .sort((a,b) => b.total - a.total)
-                .map((s, i) => (
-                  <div key={s.id} className="bg-white/5 p-6 rounded-3xl border border-white/5 flex justify-between items-center">
-                    <div className="flex items-center gap-6">
-                      <span className="text-2xl font-black text-slate-700 w-8">{i + 1}</span>
-                      <div className="font-bold text-white">{s.firstName} {s.lastName}</div>
-                    </div>
-                    <div className="text-2xl font-black text-indigo-400">{s.total} XP</div>
-                  </div>
-                ))}
-            </div>
-          )}
+      {showAddCourse && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
+          <div className="bg-slate-900 w-full max-w-2xl p-12 rounded-[3.5rem] border border-white/10 shadow-2xl">
+            <h3 className="text-3xl font-black text-white mb-8 text-center">Yangi Kurs Yaratish</h3>
+            <form onSubmit={handleCreateCourse} className="space-y-6">
+              <input required value={courseForm.title} onChange={e => setCourseForm({...courseForm, title: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-indigo-500" placeholder="Kurs Nomi" />
+              <select value={courseForm.subject} onChange={e => setCourseForm({...courseForm, subject: e.target.value as SubjectType})} className="w-full bg-slate-800 border border-white/10 rounded-2xl px-6 py-4 outline-none">
+                {Object.values(Subject).map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <input required value={courseForm.teacher} onChange={e => setCourseForm({...courseForm, teacher: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-indigo-500" placeholder="O'qituvchi Ismi" />
+              <textarea required value={courseForm.description} onChange={e => setCourseForm({...courseForm, description: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 outline-none h-32" placeholder="Kurs haqida batafsil..." />
+              <div className="flex gap-4">
+                <button type="button" onClick={() => setShowAddCourse(false)} className="flex-1 py-4 rounded-xl font-bold bg-white/5">Bekor qilish</button>
+                <button type="submit" className="flex-1 py-4 rounded-xl font-bold bg-indigo-600">Kursni Saqlash</button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
@@ -267,22 +247,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
              </div>
           </div>
-        </div>
-      )}
-
-      {activeSection === 'requests' && (
-        <div className="max-w-4xl mx-auto space-y-6">
-          <h2 className="text-3xl font-black text-white">Yangi Arizalar</h2>
-          {requests.map(r => (
-            <div key={r.id} className="bg-slate-900/80 p-8 rounded-[3rem] border border-white/10 flex items-center justify-between group hover:border-indigo-500/30 transition">
-               <div>
-                  <h4 className="text-xl font-black text-white">{r.userName}</h4>
-                  <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest">{r.courseTitle}</p>
-               </div>
-               <button onClick={() => onApprove(r.id)} className="w-14 h-14 bg-emerald-500 text-white rounded-2xl flex items-center justify-center shadow-xl hover:scale-110 transition"><i className="fas fa-check"></i></button>
-            </div>
-          ))}
-          {requests.length === 0 && <div className="py-32 text-center text-slate-500 italic bg-white/5 rounded-[3rem] border-2 border-dashed border-white/5">Yangi arizalar yo'q.</div>}
         </div>
       )}
     </div>
