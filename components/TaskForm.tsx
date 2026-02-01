@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { SubjectType, TaskResult, CourseTask } from '../types.ts';
 import { checkTask } from '../services/geminiService.ts';
@@ -17,25 +18,26 @@ const TaskForm: React.FC<TaskFormProps> = ({ userName, courseTitle, courseSubjec
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
   useEffect(() => {
+    // Agar vazifa uchun taymer o'rnatilgan bo'lsa
     if (activeTask?.timerEnd) {
-      const calculateTimeLeft = () => {
+      const updateTimer = () => {
         const diff = activeTask.timerEnd! - Date.now();
         if (diff <= 0) {
           setTimeLeft(0);
-          return 0;
+          return false;
         }
-        const seconds = Math.floor(diff / 1000);
-        setTimeLeft(seconds);
-        return seconds;
+        setTimeLeft(Math.floor(diff / 1000));
+        return true;
       };
 
-      calculateTimeLeft();
-      const interval = setInterval(() => {
-        const remaining = calculateTimeLeft();
-        if (remaining <= 0) clearInterval(interval);
-      }, 1000);
-
-      return () => clearInterval(interval);
+      const stillRunning = updateTimer();
+      if (stillRunning) {
+        const interval = setInterval(() => {
+          const ok = updateTimer();
+          if (!ok) clearInterval(interval);
+        }, 1000);
+        return () => clearInterval(interval);
+      }
     } else {
       setTimeLeft(null);
     }

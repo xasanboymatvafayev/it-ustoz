@@ -2,9 +2,9 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { SubjectType, TaskResult, QuizQuestion } from "../types.ts";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 export async function generateQuiz(subject: string, level: string): Promise<QuizQuestion[]> {
+  // Har doim yangi instance yaratamiz, shunda API_KEY brauzerda yuklangandan keyin olinadi
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const prompt = `Generate 5 high-quality multiple choice questions for ${subject} at ${level} level. 
   Return ONLY a JSON array of objects with keys: question, options (array of 4 strings), correctAnswer (index 0-3), and explanation.`;
 
@@ -38,6 +38,7 @@ export async function generateQuiz(subject: string, level: string): Promise<Quiz
 }
 
 export async function checkTask(userName: string, subject: SubjectType, task: string, courseTitle: string): Promise<TaskResult> {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const systemInstruction = `Siz $10M lik EdTech platformasining Lead AI Mentor-isiz. O'quvchining mantiqiy xatolarini va bozor qiymatini tahlil qiling.`;
 
   const prompt = `O'quvchi: ${userName}\nSoha: ${subject}\nKod/Vazifa: ${task}\nJSON formatda javob bering.`;
