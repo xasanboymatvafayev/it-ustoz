@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { SubjectType, TaskResult, CourseTask } from '../types.ts';
 import { checkTask } from '../services/geminiService.ts';
@@ -18,20 +19,14 @@ const TaskForm: React.FC<TaskFormProps> = ({ userName, courseTitle, courseSubjec
 
   useEffect(() => {
     if (activeTask?.timerEnd) {
-      const calculate = () => {
+      const interval = setInterval(() => {
         const diff = activeTask.timerEnd! - Date.now();
         if (diff <= 0) {
           setTimeLeft(0);
-          return true;
+          clearInterval(interval);
+        } else {
+          setTimeLeft(Math.floor(diff / 1000));
         }
-        setTimeLeft(Math.floor(diff / 1000));
-        return false;
-      };
-
-      if (calculate()) return;
-
-      const interval = setInterval(() => {
-        if (calculate()) clearInterval(interval);
       }, 1000);
       return () => clearInterval(interval);
     } else {

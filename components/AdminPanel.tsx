@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { User, Course, CourseTask, TaskResult, EnrollmentRequest, Subject, SubjectType } from '../types.ts';
 import { api } from '../services/apiService.ts';
@@ -66,6 +67,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const handleStartTimer = async (taskId: string) => {
     if (!confirm("Hamma o'quvchilar uchun 4 daqiqalik taymerni boshlaysizmi?")) return;
+    // API orqali taymerni 4 daqiqaga o'rnatish
     await api.startTaskTimer(taskId, 4);
     alert("Taymer boshlandi!");
   };
@@ -180,15 +182,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="space-y-4">
                 <h3 className="text-xl font-black mb-4 text-white">Kursdagi Vazifalar ({courseTasks.length})</h3>
                 {courseTasks.map(t => (
-                  <div key={t.id} className="bg-white/5 p-6 rounded-3xl border border-white/5 flex items-center justify-between">
+                  <div key={t.id} className="bg-white/5 p-6 rounded-3xl border border-white/5 flex items-center justify-between group">
                     <div>
-                      <div className="text-[10px] font-bold text-slate-500">VAZIFA {t.order}</div>
+                      <div className="text-[10px] font-bold text-slate-500 uppercase">VAZIFA {t.order}</div>
                       <div className="font-bold text-white mb-2">{t.title}</div>
                       <button 
                         onClick={() => handleStartTimer(t.id)}
-                        className="bg-rose-600/20 text-rose-400 text-[9px] font-black px-3 py-1.5 rounded-lg border border-rose-600/30 hover:bg-rose-600 transition uppercase tracking-tighter"
+                        className="bg-rose-600/20 text-rose-400 text-[10px] font-black px-4 py-2 rounded-xl border border-rose-500/30 hover:bg-rose-600 hover:text-white transition flex items-center gap-2 uppercase tracking-widest"
                       >
-                        <i className="fas fa-stopwatch mr-1"></i> Taymer (4m)
+                        <i className="fas fa-stopwatch"></i> Taymer (4m)
                       </button>
                     </div>
                   </div>

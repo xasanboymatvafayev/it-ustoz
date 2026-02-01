@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, Course, EnrollmentRequest, CourseTask, TaskResult } from './types.ts';
 import Auth from './components/Auth.tsx';
@@ -58,7 +59,8 @@ const App: React.FC = () => {
 
   useEffect(() => {
     syncData();
-    const interval = setInterval(syncData, 5000); // Tezkor yangilanish (taymer uchun)
+    // Taymerni kuzatish uchun har 5 soniyada yangilab turamiz
+    const interval = setInterval(syncData, 5000);
     return () => clearInterval(interval);
   }, [syncData]);
 
