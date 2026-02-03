@@ -1,23 +1,26 @@
+
 /**
  * @file apiService.ts
- * @module SovereignApiService
- * @description IT-Ustoz platformasining markaziy ma'lumotlar magistrali. 
+ * @description IT-Ustoz platformasining markaziy tarmoq xizmati. 
+ * Brauzer va Railway backend o'rtasidagi muloqotni boshqaradi.
  */
 
 import { User, Course, EnrollmentRequest, CourseTask, TaskResult, ChatMessage } from '../types';
 
-/**
- * @constant API_CONFIG
- */
-const API_CONFIG = {
-  // Netlify va Railway integratsiyasi uchun markaziy nuqta
-  BASE_URL: (
-    (typeof process !== 'undefined' && process.env?.VITE_BACKEND_URL) || 
-    'https://it-ustoz-backend-production.up.railway.app'
-  ).replace(/\/$/, '') + '/api',
+const getBaseUrl = () => {
+  // 1. Birinchi navbatda environment o'zgaruvchisini tekshirish
+  let url = (typeof process !== 'undefined' && process.env?.VITE_BACKEND_URL) || 
+            (window as any).VITE_BACKEND_URL ||
+            'https://it-ustoz-production.up.railway.app';
   
-  TIMEOUT: 20000,
-  RETRY_COUNT: 3,
+  // URL formatini tekshirish (oxiridagi "/" ni olib tashlash)
+  return url.replace(/\/$/, '') + '/api';
+};
+
+const API_CONFIG = {
+  BASE_URL: getBaseUrl(),
+  TIMEOUT: 45000, // 45 soniya - Railway uyg'onishi uchun yetarli
+  RETRY_COUNT: 5,
   STORAGE_KEYS: {
     USERS: 'it_ustoz_db_users',
     COURSES: 'it_ustoz_db_courses',
@@ -28,9 +31,6 @@ const API_CONFIG = {
   }
 };
 
-/**
- * @class DataPersistenceManager
- */
 class DataPersistenceManager {
   private static instance: DataPersistenceManager;
   private constructor() {}
@@ -45,9 +45,7 @@ class DataPersistenceManager {
     try {
       const data = localStorage.getItem(key);
       return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
+    } catch { return []; }
   }
 
   public set<T>(key: string, data: T[]): void {
@@ -63,6 +61,10 @@ class DataPersistenceManager {
 
 const persistence = DataPersistenceManager.getInstance();
 
+/**
+ * @function sovereignFetch
+ * @description Xavfsiz va aqlli fetch so'rovi. CORS va Timeout muammolarini boshqaradi.
+ */
 async function sovereignFetch<T>(
   endpoint: string, 
   options: RequestInit = {}, 
@@ -76,9 +78,11 @@ async function sovereignFetch<T>(
   try {
     const response = await fetch(url, {
       ...options,
+      mode: 'cors', // CORS rejimini majburiy qilish
+      credentials: 'omit', // Credentials bilan bog'liq CORS muammolarini kamaytirish
       headers: {
         'Content-Type': 'application/json',
-        'X-Client-Sovereign-ID': 'IT-USTOZ-v3-PROD',
+        'Accept': 'application/json',
         ...options.headers
       },
       signal: controller.signal
@@ -87,18 +91,30 @@ async function sovereignFetch<T>(
     clearTimeout(timeoutId);
 
     if (response.status === 404) return null;
-    if (!response.ok) throw new Error(`API Status ${response.status}`);
+    if (!response.ok) throw new Error(`Status: ${response.status}`);
 
     return await response.json();
   } catch (error: any) {
     clearTimeout(timeoutId);
-    console.error(`Fetch Attempt ${retryCount + 1} Failed:`, error.message);
     
+    // Xatolik turini aniqlash
+    const isTimeout = error.name === 'AbortError';
+    const isNetworkError = error.message === 'Failed to fetch';
+    
+    console.warn(`[API WARNING] Attempt ${retryCount + 1} for ${endpoint} failed: ${isTimeout ? 'Timeout' : error.message}`);
+
     if (retryCount < API_CONFIG.RETRY_COUNT) {
-      const backoff = Math.pow(2, retryCount) * 1000;
-      await new Promise(res => setTimeout(res, backoff));
+      // Eksponentsial kutish va qayta urinish
+      const backoffDelay = Math.min(1000 * Math.pow(2, retryCount), 10000);
+      await new Promise(res => setTimeout(res, backoffDelay));
       return sovereignFetch(endpoint, options, retryCount + 1);
     }
+    
+    // Agar barcha urinishlar tugasa va bu Network Error bo'lsa (CORS yoki Offline)
+    if (isNetworkError) {
+      console.error("[API FATAL] Network connection to backend lost or blocked by CORS.");
+    }
+    
     return null;
   }
 }
