@@ -14,24 +14,25 @@ from pydantic import BaseModel
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("AI-USTOZ-BACKEND")
 
-app = FastAPI(title="AI Ustoz Railway API", version="5.1.0")
+app = FastAPI(title="AI Ustoz Railway API", version="5.2.0")
 
 # --- CORS SOZLAMALARI ---
-# Eng ochiq va ruxsat beruvchi CORS rejimi
+# Railway va brauzer xavfsizlik tizimlari uchun eng barqaror CORS rejimi
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=False,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
     expose_headers=["*"],
+    max_age=3600,
 )
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-def get_db_connection(retries=3):
+def get_db_connection(retries=5):
     last_err = None
     for i in range(retries):
         try:
@@ -39,22 +40,22 @@ def get_db_connection(retries=3):
                 conn = psycopg2.connect(
                     DATABASE_URL, 
                     cursor_factory=RealDictCursor, 
-                    connect_timeout=10, 
+                    connect_timeout=15, 
                     sslmode='require'
                 )
                 return conn
             return None
         except Exception as e:
             last_err = e
-            logger.warning(f"DB ulanish urinishi {i+1} muvaffaqiyatsiz: {e}")
-            time.sleep(1)
-    logger.error(f"DB ga ulanib bo'lmadi: {last_err}")
+            logger.warning(f"DB connection attempt {i+1} failed: {e}")
+            time.sleep(2)
+    logger.error(f"Could not connect to DB: {last_err}")
     return None
 
 async def init_db():
     conn = get_db_connection()
     if not conn: 
-        logger.warning("Ma'lumotlar bazasiz rejim.")
+        logger.warning("DATABASE_URL not found or DB unreachable. Operating in local mode.")
         return
     try:
         cur = conn.cursor()
@@ -65,7 +66,7 @@ async def init_db():
         cur.execute("CREATE TABLE IF NOT EXISTS task_results (id TEXT PRIMARY KEY, taskid TEXT, userid TEXT, username TEXT, studentanswer TEXT, aifeedback TEXT, aistatus TEXT, grade INTEGER, admingrade INTEGER, errors TEXT, solution TEXT, explanation TEXT, mistakepatterns TEXT, cognitiveimpact INTEGER, marketabilityboost INTEGER, status TEXT DEFAULT 'pending', timestamp BIGINT, courseid TEXT)")
         cur.execute("CREATE TABLE IF NOT EXISTS enrollment_requests (id TEXT PRIMARY KEY, userid TEXT, username TEXT, courseid TEXT, coursetitle TEXT, status TEXT DEFAULT 'pending')")
         conn.commit()
-        logger.info("Railway Postgres DB tayyor.")
+        logger.info("Railway Postgres DB Initialized Successfully.")
     except Exception as e:
         logger.error(f"Init DB Error: {e}")
     finally:
@@ -76,11 +77,12 @@ async def startup_event():
     import asyncio
     asyncio.create_task(init_db())
 
+# API Router with prefix
 api = APIRouter(prefix="/api")
 
 @app.get("/")
 async def root_health():
-    return {"status": "ok", "service": "AI Ustoz Backend", "env": "Production"}
+    return {"status": "ok", "message": "AI Ustoz Backend is Online"}
 
 @api.get("/users")
 async def fetch_users():
@@ -95,6 +97,9 @@ async def fetch_users():
             r['firstName'] = r.pop('firstname', '')
             r['lastName'] = r.pop('lastname', '')
         return rows
+    except Exception as e:
+        logger.error(f"Error fetching users: {e}")
+        return []
     finally:
         conn.close()
 
@@ -119,6 +124,9 @@ async def fetch_courses():
         cur = conn.cursor()
         cur.execute("SELECT * FROM courses ORDER BY createdat DESC")
         return cur.fetchall()
+    except Exception as e:
+        logger.error(f"Error fetching courses: {e}")
+        return []
     finally:
         conn.close()
 
@@ -148,6 +156,9 @@ async def fetch_tasks():
             r['validationCriteria'] = r.pop('validationcriteria', '')
             r['timerEnd'] = r.pop('timerend', 0)
         return rows
+    except Exception as e:
+        logger.error(f"Error fetching tasks: {e}")
+        return []
     finally:
         conn.close()
 
@@ -185,6 +196,9 @@ async def fetch_results():
             r['marketabilityBoost'] = r.pop('marketabilityboost', 0)
             r['courseId'] = r.pop('courseid', '')
         return rows
+    except Exception as e:
+        logger.error(f"Error fetching results: {e}")
+        return []
     finally:
         conn.close()
 

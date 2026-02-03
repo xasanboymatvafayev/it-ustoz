@@ -7,41 +7,43 @@ import { User, Course, EnrollmentRequest, CourseTask, TaskResult, ChatMessage } 
  */
 
 const getBaseUrl = () => {
-  // Foydalanuvchi taqdim etgan aniq Railway domini
+  // Railway domini - qat'iy belgilangan
   const PRODUCTION_DOMAIN = 'https://it-ustoz-production.up.railway.app';
   
-  // Muhit o'zgaruvchilari tekshiriladi (Netlify/Vercel uchun)
+  // Environment o'zgaruvchilari tekshiriladi
   const shimUrl = (window as any).process?.env?.VITE_BACKEND_URL;
   const viteUrl = (import.meta as any).env?.VITE_BACKEND_URL;
   
   const base = shimUrl || viteUrl || PRODUCTION_DOMAIN;
   
-  // URLni tozalash va /api qo'shish
+  // URLni tozalash (oxiridagi / belgilarini olib tashlash)
   const cleanBase = base.replace(/\/+$/, '');
   return `${cleanBase}/api`;
 };
 
 const API_CONFIG = {
   BASE_URL: getBaseUrl(),
-  TIMEOUT: 60000, // 60 soniya
-  RETRY_COUNT: 5
+  TIMEOUT: 60000, // 60 soniya (Cold Start uchun juda muhim)
+  RETRY_COUNT: 5  // Qayta urinishlar soni
 };
 
 async function sovereignFetch<T>(endpoint: string, options: RequestInit = {}, retry = 0): Promise<T | null> {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  
-  // Cache busting: Har bir so'rovga vaqt tamg'asini qo'shamiz (Failed to fetch keshini oldini olish uchun)
-  const url = `${API_CONFIG.BASE_URL}${cleanEndpoint}${cleanEndpoint.includes('?') ? '&' : '?'}t=${Date.now()}`;
+  const url = `${API_CONFIG.BASE_URL}${cleanEndpoint}`;
   
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
 
   try {
-    console.log(`[NETWORK CALL] ${options.method || 'GET'} -> ${url}`);
+    // Har bir so'rovga keshga tushmasligi uchun vaqt tamg'asi qo'shamiz
+    const finalUrl = `${url}${url.includes('?') ? '&' : '?'}cb=${Date.now()}`;
     
-    const res = await fetch(url, {
+    console.log(`[NETWORK] Calling: ${finalUrl} (Attempt ${retry + 1})`);
+
+    const res = await fetch(finalUrl, {
       ...options,
-      cache: 'no-cache', // Keshdan foydalanmaslik
+      mode: 'cors',
+      cache: 'no-store',
       headers: { 
         'Accept': 'application/json',
         'Content-Type': 'application/json',
@@ -53,7 +55,6 @@ async function sovereignFetch<T>(endpoint: string, options: RequestInit = {}, re
     clearTimeout(timeoutId);
 
     if (res.status === 404) return null;
-
     if (!res.ok) {
         const text = await res.text();
         throw new Error(`HTTP ${res.status}: ${text || 'Server Error'}`);
@@ -63,12 +64,14 @@ async function sovereignFetch<T>(endpoint: string, options: RequestInit = {}, re
   } catch (err: any) {
     clearTimeout(timeoutId);
     
-    const isNetworkError = err.name === 'TypeError' || err.message.includes('Failed to fetch') || err.name === 'AbortError';
+    // Failed to fetch yoki Timeout holatlarida retry qilamiz
+    const isNetworkError = err.name === 'TypeError' || err.message.includes('Failed to fetch');
+    const isTimeout = err.name === 'AbortError';
 
-    if (isNetworkError && retry < API_CONFIG.RETRY_COUNT) {
-      // Eksponentsial kutish vaqti
-      const waitTime = Math.pow(2, retry) * 2000; 
-      console.warn(`[RETRYING ${retry + 1}/${API_CONFIG.RETRY_COUNT}] ${url} | ${waitTime}ms dan so'ng...`);
+    if ((isNetworkError || isTimeout) && retry < API_CONFIG.RETRY_COUNT) {
+      // Har bir retry oralig'ida kutish vaqtini oshiramiz (2s, 4s, 8s...)
+      const waitTime = Math.pow(2, retry) * 2000;
+      console.warn(`[RETRY] ${url} failed. Retrying in ${waitTime}ms...`);
       await new Promise(r => setTimeout(r, waitTime));
       return sovereignFetch(endpoint, options, retry + 1);
     }
