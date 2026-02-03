@@ -72,7 +72,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
         <div className="mt-8 text-center">
           <p className="text-indigo-100/50 text-sm italic">
-            "Bilim - bu kuchdir"
+            "bilim - bu kuchdir"
           </p>
         </div>
       </div>
