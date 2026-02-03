@@ -138,7 +138,7 @@ const CourseChat: React.FC<CourseChatProps> = ({ user, courseId, courseTitle }) 
                     ) : msg.userAvatar ? (
                       <img src={msg.userAvatar} className="w-full h-full object-cover" alt={msg.userName} />
                     ) : (
-                      <span className="text-xs font-black text-indigo-400">{msg.userName[0]}</span>
+                      <span className="text-xs font-black text-indigo-400">{msg.userName?.[0] || '?'}</span>
                     )}
                   </div>
                 ) : (

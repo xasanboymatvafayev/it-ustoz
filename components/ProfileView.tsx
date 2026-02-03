@@ -49,14 +49,14 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, results, courses, onUpd
           <div className="relative group">
             <div className="w-48 h-48 rounded-[3rem] bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-1.5 rotate-3 group-hover:rotate-0 transition-all duration-700">
               <div className="w-full h-full rounded-[2.8rem] bg-slate-900 flex items-center justify-center overflow-hidden border-4 border-slate-900">
-                {user.avatar ? <img src={user.avatar} className="w-full h-full object-cover" /> : <span className="text-7xl font-black text-gradient">{user.firstName[0]}</span>}
+                {user.avatar ? <img src={user.avatar} className="w-full h-full object-cover" alt="Avatar" /> : <span className="text-7xl font-black text-gradient">{user.firstName?.[0] || '?'}</span>}
               </div>
             </div>
             <div className="absolute -bottom-4 -right-4 bg-emerald-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-2xl">Verified Pro</div>
           </div>
 
           <div className="text-center lg:text-left space-y-4">
-            <h1 className="text-6xl font-black tracking-tighter leading-none mb-4">{user.firstName} <span className="text-indigo-400">{user.lastName}</span></h1>
+            <h1 className="text-6xl font-black tracking-tighter leading-none mb-4">{user.firstName || 'User'} <span className="text-indigo-400">{user.lastName || ''}</span></h1>
             <div className="flex flex-wrap justify-center lg:justify-start gap-4">
               <span className="px-5 py-2 bg-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/10 flex items-center gap-2">
                 <i className="fas fa-microchip text-indigo-400"></i> AI Knowledge Level: 14

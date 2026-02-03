@@ -147,9 +147,11 @@ const App: React.FC = () => {
 
         <div className="mt-auto space-y-4">
           <div className="p-4 bg-white/5 rounded-2xl border border-white/5 flex items-center gap-3">
-             <div className="w-10 h-10 bg-indigo-500/20 rounded-full flex items-center justify-center text-indigo-400 font-bold uppercase">{currentUser?.firstName[0]}</div>
+             <div className="w-10 h-10 bg-indigo-500/20 rounded-full flex items-center justify-center text-indigo-400 font-bold uppercase">
+               {currentUser?.firstName?.[0] || '?'}
+             </div>
              <div className="overflow-hidden">
-                <p className="text-xs font-black text-white truncate">{currentUser?.firstName}</p>
+                <p className="text-xs font-black text-white truncate">{currentUser?.firstName || 'User'}</p>
                 <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{currentUser?.role}</p>
              </div>
           </div>
@@ -166,7 +168,6 @@ const App: React.FC = () => {
             user={currentUser} 
             courses={courses} 
             tasks={tasks} 
-            /* Fix: Added the missing results prop required by UserDashboardProps */
             results={results}
             requests={requests}
             onEnroll={async (cId) => {
