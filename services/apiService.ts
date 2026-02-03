@@ -10,15 +10,17 @@ import { User, Course, EnrollmentRequest, CourseTask, TaskResult, ChatMessage } 
 
 /**
  * @constant API_CONFIG
- * @description Railway backend manzili va ulanish parametrlari.
- * VITE_BACKEND_URL Netlify panelida sozlanishi kerak.
  */
 const API_CONFIG = {
-  // Netlify panelida VITE_BACKEND_URL o'zgaruvchisini Railway URL manzili bilan to'ldiring
-  BASE_URL: (process.env.VITE_BACKEND_URL || 'https://it-ustoz-backend-production.up.railway.app').replace(/\/$/, '') + '/api',
+  // Netlify'da VITE_BACKEND_URL ni Railway'dagi manzilingizga (https://...app) sozlang.
+  // Agar env bo'sh bo'lsa, default Railway manzilini ishlatadi.
+  BASE_URL: (
+    (typeof process !== 'undefined' && process.env?.VITE_BACKEND_URL) || 
+    'https://it-ustoz-backend-production.up.railway.app'
+  ).replace(/\/$/, '') + '/api',
+  
   TIMEOUT: 20000,
   RETRY_COUNT: 5,
-  SYNC_INTERVAL: 30000,
   STORAGE_KEYS: {
     USERS: 'it_ustoz_db_users',
     COURSES: 'it_ustoz_db_courses',
@@ -31,13 +33,10 @@ const API_CONFIG = {
 
 /**
  * @class DataPersistenceManager
- * @description Lokal ma'lumotlarni xavfsiz saqlash va sinxronizatsiya qilish uchun mas'ul.
  */
 class DataPersistenceManager {
   private static instance: DataPersistenceManager;
-
   private constructor() {}
-
   public static getInstance(): DataPersistenceManager {
     if (!DataPersistenceManager.instance) {
       DataPersistenceManager.instance = new DataPersistenceManager();
@@ -48,20 +47,14 @@ class DataPersistenceManager {
   public get<T>(key: string): T[] {
     try {
       const data = localStorage.getItem(key);
-      if (!data) return [];
-      return JSON.parse(data) as T[];
-    } catch (err) {
-      this.logError(`Failed to parse local data for key: ${key}`, err);
+      return data ? JSON.parse(data) : [];
+    } catch {
       return [];
     }
   }
 
   public set<T>(key: string, data: T[]): void {
-    try {
-      localStorage.setItem(key, JSON.stringify(data));
-    } catch (err) {
-      this.logError(`Failed to save data to local storage for key: ${key}`, err);
-    }
+    localStorage.setItem(key, JSON.stringify(data));
   }
 
   public updateItem<T extends { id: string }>(key: string, id: string, updates: Partial<T>): void {
@@ -69,17 +62,10 @@ class DataPersistenceManager {
     const updated = items.map(item => item.id === id ? { ...item, ...updates } : item);
     this.set(key, updated);
   }
-
-  private logError(message: string, error: any): void {
-    console.error(`[SovereignDB Error]: ${message}`, error);
-  }
 }
 
 const persistence = DataPersistenceManager.getInstance();
 
-/**
- * @function sovereignFetch
- */
 async function sovereignFetch<T>(
   endpoint: string, 
   options: RequestInit = {}, 
@@ -90,57 +76,42 @@ async function sovereignFetch<T>(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
 
-  const headers = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'X-Client-Sovereign-ID': 'IT-USTOZ-WEB-v3',
-    ...options.headers
-  };
-
   try {
     const response = await fetch(url, {
       ...options,
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Client-Sovereign-ID': 'IT-USTOZ-v3',
+        ...options.headers
+      },
       signal: controller.signal
     });
 
     clearTimeout(timeoutId);
 
     if (response.status === 404) return null;
-
-    if (!response.ok) {
-      if (response.status >= 500 && retryCount < API_CONFIG.RETRY_COUNT) {
-        const delay = Math.pow(2, retryCount) * 1000;
-        await new Promise(res => setTimeout(res, delay));
-        return sovereignFetch(endpoint, options, retryCount + 1);
-      }
-      throw new Error(`[API Error]: Status ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`Status ${response.status}`);
 
     return await response.json();
   } catch (error: any) {
     clearTimeout(timeoutId);
-    console.error(`[API Network Error]:`, error);
+    if (retryCount < API_CONFIG.RETRY_COUNT) {
+      await new Promise(res => setTimeout(res, 1000 * (retryCount + 1)));
+      return sovereignFetch(endpoint, options, retryCount + 1);
+    }
     return null;
   }
 }
 
 export const api = {
-  // --- USERS ---
   getUsers: async (): Promise<User[]> => {
     const remote = await sovereignFetch<User[]>('/users');
-    if (remote) {
-      persistence.set(API_CONFIG.STORAGE_KEYS.USERS, remote);
-      return remote;
-    }
-    return persistence.get<User>(API_CONFIG.STORAGE_KEYS.USERS);
+    if (remote) persistence.set(API_CONFIG.STORAGE_KEYS.USERS, remote);
+    return remote || persistence.get<User>(API_CONFIG.STORAGE_KEYS.USERS);
   },
 
   registerUserLocal: async (user: User): Promise<void> => {
-    await sovereignFetch('/register_user', {
-      method: 'POST',
-      body: JSON.stringify(user)
-    });
+    await sovereignFetch('/register_user', { method: 'POST', body: JSON.stringify(user) });
     const local = persistence.get<User>(API_CONFIG.STORAGE_KEYS.USERS);
     if (!local.find(u => u.username === user.username)) {
       persistence.set(API_CONFIG.STORAGE_KEYS.USERS, [...local, user]);
@@ -148,66 +119,42 @@ export const api = {
   },
 
   updateUser: async (userId: string, updates: Partial<User>): Promise<void> => {
-    await sovereignFetch(`/users/${userId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(updates)
-    });
+    await sovereignFetch(`/users/${userId}`, { method: 'PATCH', body: JSON.stringify(updates) });
     persistence.updateItem<User>(API_CONFIG.STORAGE_KEYS.USERS, userId, updates);
   },
 
-  // --- COURSES ---
   getCourses: async (): Promise<Course[]> => {
     const remote = await sovereignFetch<Course[]>('/courses');
-    if (remote) {
-      persistence.set(API_CONFIG.STORAGE_KEYS.COURSES, remote);
-      return remote;
-    }
-    return persistence.get<Course>(API_CONFIG.STORAGE_KEYS.COURSES);
+    if (remote) persistence.set(API_CONFIG.STORAGE_KEYS.COURSES, remote);
+    return remote || persistence.get<Course>(API_CONFIG.STORAGE_KEYS.COURSES);
   },
 
   saveCourse: async (course: Course): Promise<void> => {
-    await sovereignFetch('/courses', {
-      method: 'POST',
-      body: JSON.stringify(course)
-    });
+    await sovereignFetch('/courses', { method: 'POST', body: JSON.stringify(course) });
     const local = persistence.get<Course>(API_CONFIG.STORAGE_KEYS.COURSES);
     persistence.set(API_CONFIG.STORAGE_KEYS.COURSES, [...local, course]);
   },
 
-  // --- TASKS ---
   getTasks: async (): Promise<CourseTask[]> => {
     const remote = await sovereignFetch<CourseTask[]>('/tasks');
-    if (remote) {
-      persistence.set(API_CONFIG.STORAGE_KEYS.TASKS, remote);
-      return remote;
-    }
-    return persistence.get<CourseTask>(API_CONFIG.STORAGE_KEYS.TASKS);
+    if (remote) persistence.set(API_CONFIG.STORAGE_KEYS.TASKS, remote);
+    return remote || persistence.get<CourseTask>(API_CONFIG.STORAGE_KEYS.TASKS);
   },
 
   saveTask: async (task: CourseTask): Promise<void> => {
-    await sovereignFetch('/tasks', {
-      method: 'POST',
-      body: JSON.stringify(task)
-    });
+    await sovereignFetch('/tasks', { method: 'POST', body: JSON.stringify(task) });
     const local = persistence.get<CourseTask>(API_CONFIG.STORAGE_KEYS.TASKS);
     persistence.set(API_CONFIG.STORAGE_KEYS.TASKS, [...local, task]);
   },
 
-  // --- RESULTS ---
   getResults: async (): Promise<TaskResult[]> => {
     const remote = await sovereignFetch<TaskResult[]>('/results');
-    if (remote) {
-      persistence.set(API_CONFIG.STORAGE_KEYS.RESULTS, remote);
-      return remote;
-    }
-    return persistence.get<TaskResult>(API_CONFIG.STORAGE_KEYS.RESULTS);
+    if (remote) persistence.set(API_CONFIG.STORAGE_KEYS.RESULTS, remote);
+    return remote || persistence.get<TaskResult>(API_CONFIG.STORAGE_KEYS.RESULTS);
   },
 
   saveResult: async (result: TaskResult): Promise<void> => {
-    await sovereignFetch('/results', {
-      method: 'POST',
-      body: JSON.stringify(result)
-    });
+    await sovereignFetch('/results', { method: 'POST', body: JSON.stringify(result) });
     const local = persistence.get<TaskResult>(API_CONFIG.STORAGE_KEYS.RESULTS);
     persistence.set(API_CONFIG.STORAGE_KEYS.RESULTS, [result, ...local]);
   },
@@ -220,21 +167,14 @@ export const api = {
     persistence.updateItem<TaskResult>(API_CONFIG.STORAGE_KEYS.RESULTS, id, { adminGrade: grade, status: 'reviewed' });
   },
 
-  // --- REQUESTS ---
   getRequests: async (): Promise<EnrollmentRequest[]> => {
     const remote = await sovereignFetch<EnrollmentRequest[]>('/requests');
-    if (remote) {
-      persistence.set(API_CONFIG.STORAGE_KEYS.REQUESTS, remote);
-      return remote;
-    }
-    return persistence.get<EnrollmentRequest>(API_CONFIG.STORAGE_KEYS.REQUESTS);
+    if (remote) persistence.set(API_CONFIG.STORAGE_KEYS.REQUESTS, remote);
+    return remote || persistence.get<EnrollmentRequest>(API_CONFIG.STORAGE_KEYS.REQUESTS);
   },
 
   saveRequest: async (req: EnrollmentRequest): Promise<void> => {
-    await sovereignFetch('/requests', {
-      method: 'POST',
-      body: JSON.stringify(req)
-    });
+    await sovereignFetch('/requests', { method: 'POST', body: JSON.stringify(req) });
     const local = persistence.get<EnrollmentRequest>(API_CONFIG.STORAGE_KEYS.REQUESTS);
     persistence.set(API_CONFIG.STORAGE_KEYS.REQUESTS, [...local, req]);
   },
@@ -246,22 +186,15 @@ export const api = {
     persistence.set(API_CONFIG.STORAGE_KEYS.REQUESTS, updated);
   },
 
-  // --- MESSAGES ---
   getMessages: async (courseId: string): Promise<ChatMessage[]> => {
     const storageKey = `${API_CONFIG.STORAGE_KEYS.MESSAGES_PREFIX}${courseId}`;
     const remote = await sovereignFetch<ChatMessage[]>(`/messages/${courseId}`);
-    if (remote) {
-      persistence.set(storageKey, remote);
-      return remote;
-    }
-    return persistence.get<ChatMessage>(storageKey);
+    if (remote) persistence.set(storageKey, remote);
+    return remote || persistence.get<ChatMessage>(storageKey);
   },
 
   sendMessage: async (msg: ChatMessage): Promise<void> => {
-    await sovereignFetch('/messages', {
-      method: 'POST',
-      body: JSON.stringify(msg)
-    });
+    await sovereignFetch('/messages', { method: 'POST', body: JSON.stringify(msg) });
     const storageKey = `${API_CONFIG.STORAGE_KEYS.MESSAGES_PREFIX}${msg.courseId}`;
     const local = persistence.get<ChatMessage>(storageKey);
     persistence.set(storageKey, [...local, msg]);

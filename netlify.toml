@@ -1,12 +1,13 @@
-
 [build]
   command = "npm run build"
   publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+  # Netlify Pythonni o'rnatishga urinmasligi uchun (ba'zi hollarda kerak)
+  PYTHON_VERSION = "3.11"
 
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-
-[build.environment]
-  NODE_VERSION = "20"
