@@ -1,4 +1,5 @@
 
+
 export const Subject = {
   FRONTEND: 'Frontend Development',
   BACKEND: 'Backend Development',
@@ -61,6 +62,9 @@ export interface TaskResult {
   aiStatus: 'pass' | 'fail';
   adminGrade: number | null;
   timestamp: number;
+  // Added fields to match usage in apiService and UserDashboard
+  status?: string;
+  courseId?: string;
   // Extended AI results used in ResultView
   grade: number;
   result: string;

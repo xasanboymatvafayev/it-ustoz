@@ -1,9 +1,9 @@
 
 import emailjs from '@emailjs/browser';
 
-const SERVICE_ID = 'service_pa8gy9p'; 
-const TEMPLATE_ID = 'template_oqf4m5n';
-const PUBLIC_KEY = 'WBQT54zVVgzcv_3Nj';
+const SERVICE_ID = process.env.VITE_EMAIL_SERVICE_ID || 'service_pa8gy9p'; 
+const TEMPLATE_ID = process.env.VITE_EMAIL_TEMPLATE_ID || 'template_oqf4m5n';
+const PUBLIC_KEY = process.env.VITE_EMAIL_PUBLIC_KEY || 'WBQT54zVVgzcv_3Nj';
 
 export async function sendVerificationEmail(email: string, code: string, name: string): Promise<boolean> {
   try {
@@ -18,6 +18,7 @@ export async function sendVerificationEmail(email: string, code: string, name: s
     await emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams, PUBLIC_KEY);
     return true;
   } catch (error) {
+    console.error("Email Error:", error);
     return false;
   }
 }
@@ -34,6 +35,7 @@ export async function sendPasswordRecoveryEmail(email: string, username: string,
     await emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams, PUBLIC_KEY);
     return true;
   } catch (error) {
+    console.error("Email Error:", error);
     return false;
   }
 }

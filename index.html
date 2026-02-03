@@ -8,9 +8,14 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
+        // Runtime environment variables shim for static deployment
         window.process = window.process || { env: {} };
         if (typeof API_KEY !== 'undefined') {
             window.process.env.API_KEY = API_KEY;
+        }
+        // VITE prefixed variables handle both build-time injection and runtime fallbacks
+        if (typeof VITE_BACKEND_URL !== 'undefined') {
+            window.process.env.VITE_BACKEND_URL = VITE_BACKEND_URL;
         }
     </script>
     <style>
@@ -31,7 +36,6 @@
 
         .font-mono { font-family: 'JetBrains Mono', monospace; }
 
-        /* Aether Glass Effects */
         .aether-glass {
             background: rgba(255, 255, 255, 0.7);
             backdrop-filter: blur(20px) saturate(180%);
@@ -44,7 +48,6 @@
             border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
-        /* Valuation Boosting Animations */
         @keyframes pulse-ring {
             0% { transform: scale(0.95); opacity: 0.5; }
             50% { transform: scale(1.05); opacity: 0.2; }
@@ -63,7 +66,6 @@
 
         .float-premium { animation: float-ethereal 8s ease-in-out infinite; }
 
-        /* Custom Scrollbar for Luxury UX */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { 
@@ -73,7 +75,6 @@
         }
         ::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.5); }
 
-        /* Text Gradients */
         .text-gradient {
             background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
             -webkit-background-clip: text;
