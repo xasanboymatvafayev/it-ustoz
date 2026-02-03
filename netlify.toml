@@ -4,7 +4,6 @@
 
 [build.environment]
   NODE_VERSION = "20"
-  # Netlify Pythonni o'rnatishga urinmasligi uchun (ba'zi hollarda kerak)
   PYTHON_VERSION = "3.11"
 
 [[redirects]]

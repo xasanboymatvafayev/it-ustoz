@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 
 const TUTOR_SYSTEM_INSTRUCTION = `
@@ -9,7 +8,6 @@ const TUTOR_SYSTEM_INSTRUCTION = `
   Agar talaba biror texnik savol bersa, tushunarli va misollar bilan tushuntiring.
 `;
 
-// checkTask handles detailed student answer analysis
 export async function checkTask(
   userName: string, 
   subject: string, 
@@ -54,20 +52,22 @@ export async function checkTask(
       }
     });
 
-    return JSON.parse(response.text || '{}');
+    // Qoidaga ko'ra response.text() emas, response.text ishlatiladi
+    const textOutput = response.text;
+    return JSON.parse(textOutput || '{}');
   } catch (err) {
-    console.error(err);
+    console.error("Gemini CheckTask Error:", err);
     return { 
       grade: 0, 
       result: "Xatolik", 
-      errors: "AI ulanishda xatolik.", 
+      errors: "AI tahlilida muammo yuz berdi.", 
       mistakePatterns: [], 
       cognitiveImpact: 0, 
       marketabilityBoost: 0, 
       solution: "", 
       explanation: "", 
       aiStatus: 'fail', 
-      aiFeedback: "AI ulanishda xatolik." 
+      aiFeedback: "AI ulanishda xatolik yuz berdi." 
     };
   }
 }
@@ -87,14 +87,13 @@ export async function getTutorResponse(courseTitle: string, userMessage: string,
         temperature: 0.8,
       }
     });
-    return response.text;
+    return response.text; // Property ishlatildi
   } catch (error) {
     console.error("AI Tutor Error:", error);
     return "Kechirasiz, hozirgi vaqtda javob bera olmayman.";
   }
 }
 
-// generateQuiz creates dynamic test questions for students
 export async function generateQuiz(subject: string, level: string) {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const prompt = `${subject} fanidan ${level} darajadagi 5 ta test savolini generatsiya qiling.`;
@@ -120,9 +119,9 @@ export async function generateQuiz(subject: string, level: string) {
         }
       }
     });
-    return JSON.parse(response.text || '[]');
+    return JSON.parse(response.text || '[]'); // Property ishlatildi
   } catch (err) {
-    console.error(err);
+    console.error("Quiz Generator Error:", err);
     return [];
   }
 }

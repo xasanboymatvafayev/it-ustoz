@@ -1,9 +1,7 @@
-
 /**
  * @file apiService.ts
  * @module SovereignApiService
  * @description IT-Ustoz platformasining markaziy ma'lumotlar magistrali. 
- * Bu xizmat Railway platformasidagi backend bilan uzviy bog'langan va Netlify-dagi frontend bilan muloqot qiladi.
  */
 
 import { User, Course, EnrollmentRequest, CourseTask, TaskResult, ChatMessage } from '../types';
@@ -12,15 +10,14 @@ import { User, Course, EnrollmentRequest, CourseTask, TaskResult, ChatMessage } 
  * @constant API_CONFIG
  */
 const API_CONFIG = {
-  // Netlify'da VITE_BACKEND_URL ni Railway'dagi manzilingizga (https://...app) sozlang.
-  // Agar env bo'sh bo'lsa, default Railway manzilini ishlatadi.
+  // Netlify va Railway integratsiyasi uchun markaziy nuqta
   BASE_URL: (
     (typeof process !== 'undefined' && process.env?.VITE_BACKEND_URL) || 
     'https://it-ustoz-backend-production.up.railway.app'
   ).replace(/\/$/, '') + '/api',
   
   TIMEOUT: 20000,
-  RETRY_COUNT: 5,
+  RETRY_COUNT: 3,
   STORAGE_KEYS: {
     USERS: 'it_ustoz_db_users',
     COURSES: 'it_ustoz_db_courses',
@@ -81,7 +78,7 @@ async function sovereignFetch<T>(
       ...options,
       headers: {
         'Content-Type': 'application/json',
-        'X-Client-Sovereign-ID': 'IT-USTOZ-v3',
+        'X-Client-Sovereign-ID': 'IT-USTOZ-v3-PROD',
         ...options.headers
       },
       signal: controller.signal
@@ -90,13 +87,16 @@ async function sovereignFetch<T>(
     clearTimeout(timeoutId);
 
     if (response.status === 404) return null;
-    if (!response.ok) throw new Error(`Status ${response.status}`);
+    if (!response.ok) throw new Error(`API Status ${response.status}`);
 
     return await response.json();
   } catch (error: any) {
     clearTimeout(timeoutId);
+    console.error(`Fetch Attempt ${retryCount + 1} Failed:`, error.message);
+    
     if (retryCount < API_CONFIG.RETRY_COUNT) {
-      await new Promise(res => setTimeout(res, 1000 * (retryCount + 1)));
+      const backoff = Math.pow(2, retryCount) * 1000;
+      await new Promise(res => setTimeout(res, backoff));
       return sovereignFetch(endpoint, options, retryCount + 1);
     }
     return null;
