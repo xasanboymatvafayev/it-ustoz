@@ -1,85 +1,108 @@
 
-import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { SubjectType, TaskResult, QuizQuestion } from "../types.ts";
+import { GoogleGenAI, Type } from "@google/genai";
 
-export async function checkTask(userName: string, subject: SubjectType, task: string, courseTitle: string): Promise<TaskResult> {
+const TUTOR_SYSTEM_INSTRUCTION = `
+  Siz AI Ustoz platformasining guruh darslaridagi aqlli yordamchisisiz. 
+  Sizning vazifangiz talabalarga guruh chatida yordam berish, savollarga javob berish va muhokamani qo'llab-quvvatlash.
+  Siz doimo o'zbek tilida, muloyim va professional ohangda gapirasiz.
+  Talabalarni rag'batlantiring va ularga yo'nalish bering.
+  Agar talaba biror texnik savol bersa, tushunarli va misollar bilan tushuntiring.
+`;
+
+// checkTask handles detailed student answer analysis
+export async function checkTask(
+  userName: string, 
+  subject: string, 
+  studentAnswer: string, 
+  courseTitle: string,
+  criteria?: string
+) {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  const systemInstruction = `Siz AI USTOZ - o'quvchilarga ta'lim beruvchi shaxsiy mentorsunuz. 
-  Vazifa: O'quvchining javobini tahlil qiling. 
-  Uslub: Rag'batlantiruvchi, lekin professional. 
-  Baholash: 0 dan 100 gacha ball bering. 
-  Xatolarni ko'rsating va ideal yechimni taqdim eting.`;
+  const prompt = `
+    Vazifa: ${courseTitle} (${subject})
+    O'quvchi: ${userName}
+    Admin tomonidan qo'yilgan talab (Logic): ${criteria || 'Mantiqiy to\'g\'rilik'}
+    O'quvchining javobi: ${studentAnswer}
 
-  const prompt = `O'quvchi: ${userName}
-  Fan: ${subject}
-  Mavzu: ${courseTitle}
-  O'quvchi javobi: ${task}`;
+    Siz o'qituvchi yordamchisisiz. O'quvchining javobini admin kriteriyasiga mosligini tekshiring.
+    Tushuntirishni o'zbek tilida yozing.
+  `;
 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
       contents: prompt,
       config: {
-        systemInstruction,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            result: { type: Type.STRING, description: "Umumiy xulosa" },
+            grade: { type: Type.NUMBER, description: "0-100 gacha ball" },
+            result: { type: Type.STRING, description: "Qisqa xulosa" },
             errors: { type: Type.STRING, description: "Xatolar tahlili" },
-            solution: { type: Type.STRING, description: "Ideal yechim" },
-            explanation: { type: Type.STRING, description: "Nega bunday yechilgani" },
-            grade: { type: Type.NUMBER, description: "0-100 ball" },
-            mistakePatterns: { type: Type.ARRAY, items: { type: Type.STRING } },
-            cognitiveImpact: { type: Type.NUMBER },
-            marketabilityBoost: { type: Type.NUMBER }
+            mistakePatterns: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Xato turlari" },
+            cognitiveImpact: { type: Type.NUMBER, description: "1-10 gacha o'sish" },
+            marketabilityBoost: { type: Type.NUMBER, description: "Reyting o'sishi %" },
+            solution: { type: Type.STRING, description: "Ideal yechim kodi/matni" },
+            explanation: { type: Type.STRING, description: "Arxitektura tahlili" },
+            aiStatus: { type: Type.STRING, description: "'pass' yoki 'fail'" },
+            aiFeedback: { type: Type.STRING, description: "Xatolar tahlili va tushuntirish" }
           },
-          required: ["result", "errors", "solution", "explanation", "grade"]
+          required: ["grade", "result", "errors", "mistakePatterns", "cognitiveImpact", "marketabilityBoost", "solution", "explanation", "aiStatus", "aiFeedback"]
         }
       }
     });
 
-    const data = JSON.parse(response.text || '{}');
-
-    // TTS orqali mentorning qisqa ovozli xabarini yaratish
-    let audioData = "";
-    try {
-      const audioRes = await ai.models.generateContent({
-        model: "gemini-2.5-flash-preview-tts",
-        contents: [{ parts: [{ text: `Salom ${userName}. Sening javobingni tekshirdim. Sen ${data.grade} ball olding. ${data.result.substring(0, 100)}` }] }],
-        config: {
-          responseModalities: [Modality.AUDIO],
-          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } }
-        }
-      });
-      audioData = audioRes.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || "";
-    } catch (e) {}
-
-    return {
-      ...data,
-      id: Math.random().toString(36).substr(2, 9),
-      userId: "",
-      userName,
-      timestamp: Date.now(),
-      courseId: "",
-      taskId: "mvp_demo",
-      status: "pending",
-      audioData
-    };
+    return JSON.parse(response.text || '{}');
   } catch (err) {
     console.error(err);
-    throw new Error("AI Mentor hozir band, iltimos keyinroq urinib ko'ring.");
+    return { 
+      grade: 0, 
+      result: "Xatolik", 
+      errors: "AI ulanishda xatolik.", 
+      mistakePatterns: [], 
+      cognitiveImpact: 0, 
+      marketabilityBoost: 0, 
+      solution: "", 
+      explanation: "", 
+      aiStatus: 'fail', 
+      aiFeedback: "AI ulanishda xatolik." 
+    };
   }
 }
 
-// Added generateQuiz to provide quiz functionality using Gemini
-export async function generateQuiz(subject: string, level: string): Promise<QuizQuestion[]> {
+export async function getTutorResponse(courseTitle: string, userMessage: string, history: { role: 'user' | 'model', text: string }[]) {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Generate 5 multiple-choice questions about ${subject} for ${level} level in Uzbek language.`,
+      contents: [
+        ...history.map(h => ({ role: h.role, parts: [{ text: h.text }] })),
+        { role: 'user', parts: [{ text: `Kurs: ${courseTitle}. Xabar: ${userMessage}` }] }
+      ],
+      config: {
+        systemInstruction: TUTOR_SYSTEM_INSTRUCTION,
+        temperature: 0.8,
+      }
+    });
+    return response.text;
+  } catch (error) {
+    console.error("AI Tutor Error:", error);
+    return "Kechirasiz, hozirgi vaqtda javob bera olmayman.";
+  }
+}
+
+// generateQuiz creates dynamic test questions for students
+export async function generateQuiz(subject: string, level: string) {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const prompt = `${subject} fanidan ${level} darajadagi 5 ta test savolini generatsiya qiling.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-pro-preview',
+      contents: prompt,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -89,7 +112,7 @@ export async function generateQuiz(subject: string, level: string): Promise<Quiz
             properties: {
               question: { type: Type.STRING },
               options: { type: Type.ARRAY, items: { type: Type.STRING } },
-              correctAnswer: { type: Type.NUMBER, description: "Correct answer index (0-3)" },
+              correctAnswer: { type: Type.NUMBER, description: "0-3 oralig'ida to'g'ri indeks" },
               explanation: { type: Type.STRING }
             },
             required: ["question", "options", "correctAnswer", "explanation"]
@@ -99,7 +122,7 @@ export async function generateQuiz(subject: string, level: string): Promise<Quiz
     });
     return JSON.parse(response.text || '[]');
   } catch (err) {
-    console.error("Quiz generation failed:", err);
+    console.error(err);
     return [];
   }
 }

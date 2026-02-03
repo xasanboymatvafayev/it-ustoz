@@ -163,7 +163,12 @@ const App: React.FC = () => {
       <main className="flex-grow p-10 overflow-y-auto">
         {currentView === 'dashboard' && currentUser && (
           <UserDashboard 
-            user={currentUser} courses={courses} tasks={tasks} requests={requests}
+            user={currentUser} 
+            courses={courses} 
+            tasks={tasks} 
+            /* Fix: Added the missing results prop required by UserDashboardProps */
+            results={results}
+            requests={requests}
             onEnroll={async (cId) => {
               const r: EnrollmentRequest = { id: Math.random().toString(36).substr(2, 9), userId: currentUser.id, userName: currentUser.firstName, courseId: cId, courseTitle: courses.find(c => c.id === cId)?.title || '', status: 'pending' };
               await api.saveRequest(r);
