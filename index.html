@@ -8,12 +8,16 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
-        // Runtime environment variables shim for static deployment
+        // Global process shim for environment variables
         window.process = window.process || { env: {} };
-        if (typeof API_KEY !== 'undefined') {
-            window.process.env.API_KEY = API_KEY;
-        }
-        // VITE prefixed variables handle both build-time injection and runtime fallbacks
+        
+        // Netlify/Railway build-time variables
+        // Foydalanuvchi taqdim etgan oxirgi Railway domeniga o'zgartirildi
+        const BACKEND_URL = "https://it-ustoz-production.up.railway.app"; 
+        
+        window.process.env.VITE_BACKEND_URL = window.process.env.VITE_BACKEND_URL || BACKEND_URL;
+        
+        // If the bundler doesn't inject it, we use our defined values
         if (typeof VITE_BACKEND_URL !== 'undefined') {
             window.process.env.VITE_BACKEND_URL = VITE_BACKEND_URL;
         }
@@ -29,7 +33,7 @@
 
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: #f8fafc;
+            background-color: #020617;
             color: #1e293b;
             overflow-x: hidden;
         }
@@ -83,6 +87,15 @@
 
         .premium-shadow {
             box-shadow: 0 25px 50px -12px rgba(99, 102, 241, 0.15);
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 <script type="importmap">
