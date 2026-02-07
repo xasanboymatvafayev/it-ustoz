@@ -1,13 +1,16 @@
 
 import React, { useEffect, useRef } from 'react';
 import { TaskResult } from '../types.ts';
+import { translations, Lang } from '../translations';
 
 interface ResultViewProps {
+  lang: Lang;
   result: TaskResult;
   onReset: () => void;
 }
 
-const ResultView: React.FC<ResultViewProps> = ({ result, onReset }) => {
+const ResultView: React.FC<ResultViewProps> = ({ lang, result, onReset }) => {
+  const t = translations[lang];
   const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
@@ -42,7 +45,7 @@ const ResultView: React.FC<ResultViewProps> = ({ result, onReset }) => {
             </svg>
             <div className="text-center relative z-10">
               <span className={`text-7xl font-black ${getGradeColor(result.grade)} tracking-tighter`}>{result.grade}</span>
-              <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mt-1">Sovereign Index</div>
+              <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mt-1">{t.iqIndex}</div>
             </div>
           </div>
           {result.audioData && (
@@ -54,10 +57,10 @@ const ResultView: React.FC<ResultViewProps> = ({ result, onReset }) => {
 
         <div className="text-center lg:text-left flex-grow space-y-4">
           <div className="flex items-center justify-center lg:justify-start gap-4 mb-2">
-            <span className="px-4 py-1.5 bg-indigo-500/10 text-indigo-400 rounded-xl text-[10px] font-black uppercase tracking-widest border border-indigo-500/20">Task Verified</span>
-            <span className="px-4 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-xl text-[10px] font-black uppercase tracking-widest border border-emerald-500/20">Senior Analysis</span>
+            <span className="px-4 py-1.5 bg-indigo-500/10 text-indigo-400 rounded-xl text-[10px] font-black uppercase tracking-widest border border-indigo-500/20">{t.taskVerified}</span>
+            <span className="px-4 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-xl text-[10px] font-black uppercase tracking-widest border border-emerald-500/20">{t.seniorAnalysis}</span>
           </div>
-          <h2 className="text-4xl font-black text-white tracking-tighter leading-tight">AI Mentor Insight</h2>
+          <h2 className="text-4xl font-black text-white tracking-tighter leading-tight">{t.mentorInsight}</h2>
           <p className="text-slate-400 text-xl font-medium leading-relaxed italic max-w-3xl">"{result.result}"</p>
         </div>
       </div>
@@ -67,7 +70,7 @@ const ResultView: React.FC<ResultViewProps> = ({ result, onReset }) => {
         <div className="lg:col-span-2 bg-white p-12 rounded-[3.5rem] border border-slate-100 shadow-xl">
            <h3 className="text-rose-500 font-black text-[10px] uppercase tracking-widest mb-8 flex items-center gap-4">
              <div className="w-10 h-10 bg-rose-50 rounded-2xl flex items-center justify-center"><i className="fas fa-shield-virus"></i></div>
-             Logical Vulnerabilities & Errors
+             {t.vulnerabilities}
            </h3>
            <p className="text-slate-600 text-lg leading-relaxed mb-8">{result.errors}</p>
            <div className="flex flex-wrap gap-3">
@@ -80,14 +83,14 @@ const ResultView: React.FC<ResultViewProps> = ({ result, onReset }) => {
         {/* Cognitive Impact Card */}
         <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-10 rounded-[3.5rem] text-white shadow-2xl relative overflow-hidden">
            <div className="absolute top-0 right-0 p-10 opacity-5 rotate-12"><i className="fas fa-brain text-[10rem]"></i></div>
-           <h3 className="text-indigo-200 font-black text-[10px] uppercase tracking-widest mb-10">Growth Impact</h3>
+           <h3 className="text-indigo-200 font-black text-[10px] uppercase tracking-widest mb-10">{t.growthImpact}</h3>
            <div className="space-y-8">
              <div>
-               <div className="flex justify-between text-xs font-black uppercase mb-2"><span>Cognitive Gain</span><span>{result.cognitiveImpact}/10</span></div>
+               <div className="flex justify-between text-xs font-black uppercase mb-2"><span>{t.cognitiveGain}</span><span>{result.cognitiveImpact}/10</span></div>
                <div className="w-full h-2 bg-white/10 rounded-full"><div className="h-full bg-emerald-400 rounded-full" style={{width: `${result.cognitiveImpact*10}%`}}></div></div>
              </div>
              <div>
-               <div className="flex justify-between text-xs font-black uppercase mb-2"><span>Marketability Boost</span><span>+{result.marketabilityBoost}%</span></div>
+               <div className="flex justify-between text-xs font-black uppercase mb-2"><span>{t.marketBoost}</span><span>+{result.marketabilityBoost}%</span></div>
                <div className="w-full h-2 bg-white/10 rounded-full"><div className="h-full bg-pink-400 rounded-full" style={{width: `${result.marketabilityBoost*20}%`}}></div></div>
              </div>
            </div>
@@ -99,7 +102,7 @@ const ResultView: React.FC<ResultViewProps> = ({ result, onReset }) => {
            <div className="flex items-center justify-between mb-8">
              <h3 className="text-emerald-400 font-black text-[10px] uppercase tracking-widest flex items-center gap-4">
                <div className="w-10 h-10 bg-slate-800 rounded-2xl flex items-center justify-center"><i className="fas fa-code"></i></div>
-               Aether Optimized Solution
+               {t.optimizedSolution}
              </h3>
              <button className="px-6 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">Copy Artifact</button>
            </div>
@@ -107,14 +110,14 @@ const ResultView: React.FC<ResultViewProps> = ({ result, onReset }) => {
              <pre>{result.solution}</pre>
            </div>
            <div className="mt-10 p-8 bg-indigo-500/5 rounded-3xl border border-indigo-500/10">
-             <h4 className="text-indigo-300 font-black text-[10px] uppercase tracking-widest mb-4">Architecture Insight</h4>
+             <h4 className="text-indigo-300 font-black text-[10px] uppercase tracking-widest mb-4">{t.architectureInsight}</h4>
              <p className="text-indigo-100/70 leading-relaxed text-lg font-medium italic">"{result.explanation}"</p>
            </div>
         </div>
       </div>
 
       <button onClick={onReset} className="w-full py-10 bg-slate-900 text-white font-black text-3xl rounded-[3rem] hover:bg-indigo-600 transition-all shadow-2xl transform active:scale-95 premium-shadow group">
-        Unlock Next Level <i className="fas fa-arrow-right ml-6 group-hover:translate-x-4 transition-all duration-500"></i>
+        {t.unlockNext} <i className="fas fa-arrow-right ml-6 group-hover:translate-x-4 transition-all duration-500"></i>
       </button>
     </div>
   );

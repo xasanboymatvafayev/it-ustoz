@@ -2,6 +2,7 @@
   "name": "AI Ustoz - Raqamli O'qituvchi",
   "description": "Maktab o'quvchilari uchun sun'iy intellekt asosida topshiriqlarni tekshiruvchi va tushuntiruvchi aqlli platforma.",
   "requestFramePermissions": [
-    "camera"
+    "camera",
+    "microphone"
   ]
 }

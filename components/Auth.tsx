@@ -1,9 +1,10 @@
 
 import React, { useState } from 'react';
 import { User } from '../types';
-import { sendPasswordRecoveryEmail } from '../services/emailService';
+import { translations, Lang } from '../translations';
 
 interface AuthProps {
+  lang: Lang;
   users: User[];
   onLogin: (username: string, pass: string) => boolean;
   onRegister: (user: User) => void;
@@ -11,44 +12,28 @@ interface AuthProps {
   isLoading?: boolean;
 }
 
-const Auth: React.FC<AuthProps> = ({ users, onLogin, onRegister, onAdminClick, isLoading }) => {
+const Auth: React.FC<AuthProps> = ({ lang, users, onLogin, onRegister, onAdminClick, isLoading }) => {
+  const t = translations[lang];
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [formData, setFormData] = useState({
     username: '',
     password: '',
     firstName: '',
     lastName: '',
-    grade: 'Junior',
     email: '',
-    parentPhone: '',
     role: 'user' as 'user' | 'parent'
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (mode === 'login') {
-      const success = onLogin(formData.username, formData.password);
-      if (!success) alert("Login yoki parol noto'g'ri!");
+      onLogin(formData.username, formData.password);
     } else if (mode === 'register') {
-      const existingEmail = users.find(u => u.email.toLowerCase() === formData.email.toLowerCase());
-      if (existingEmail) {
-        alert("Ushbu email manzili allaqachon ro'yxatdan o'tgan!");
-        return;
-      }
       onRegister({
         id: Math.random().toString(36).substr(2, 9),
         ...formData,
         enrolledCourses: []
       });
-    } else {
-      const user = users.find(u => u.email === formData.email);
-      if (user) {
-        alert("Ma'lumotlar emailingizga yuborildi!");
-        await sendPasswordRecoveryEmail(user.email, user.username, user.password || '****');
-        setMode('login');
-      } else {
-        alert("Bunday email tizimda mavjud emas!");
-      }
     }
   };
 
@@ -62,64 +47,63 @@ const Auth: React.FC<AuthProps> = ({ users, onLogin, onRegister, onAdminClick, i
             <i className="fas fa-terminal text-white text-3xl"></i>
           </div>
           <h1 className="text-3xl font-black text-slate-800 tracking-tight">AI USTOZ</h1>
-          <p className="text-slate-500 font-medium">
-            {mode === 'login' ? 'Tizimga kirish' : mode === 'register' ? 'Ro\'yxatdan o\'tish' : 'Parolni tiklash'}
+          <p className="text-slate-500 font-medium uppercase text-[10px] tracking-widest mt-2">
+            {mode === 'login' ? t.login : mode === 'register' ? t.register : t.forgotPass}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {mode !== 'forgot' && (
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">{t.username}</label>
+              <input 
+                type="text" 
+                placeholder={t.placeholderUser}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-indigo-600 outline-none transition" 
+                value={formData.username} 
+                onChange={e => setFormData({...formData, username: e.target.value})} 
+              />
+            </div>
+          )}
+
           {mode === 'register' && (
-            <div className="flex bg-slate-100 p-1 rounded-xl mb-4">
-              <button type="button" onClick={() => setFormData({...formData, role: 'user'})} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition ${formData.role === 'user' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>O'quvchi</button>
-              <button type="button" onClick={() => setFormData({...formData, role: 'parent'})} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition ${formData.role === 'parent' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Ota-ona</button>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">{t.email}</label>
+              <input type="email" placeholder={t.placeholderEmail} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-indigo-600 outline-none" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
             </div>
           )}
 
           {mode !== 'forgot' && (
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Foydalanuvchi nomi</label>
-              <input type="text" required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-indigo-600 outline-none transition" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} />
-            </div>
-          )}
-
-          {mode === 'forgot' || mode === 'register' ? (
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Email</label>
-              <input type="email" required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-indigo-600 outline-none transition" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
-            </div>
-          ) : null}
-
-          {mode !== 'forgot' && (
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Parol</label>
-              <input type="password" required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-indigo-600 outline-none transition" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">{t.password}</label>
+              <input 
+                type="password" 
+                placeholder={t.placeholderPass}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-indigo-600 outline-none transition" 
+                value={formData.password} 
+                onChange={e => setFormData({...formData, password: e.target.value})} 
+              />
             </div>
           )}
 
           {mode === 'register' && (
-            <>
-              <div className="grid grid-cols-2 gap-4">
-                <input type="text" placeholder="Ism" required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-indigo-600 outline-none" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} />
-                <input type="text" placeholder="Familiya" required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-indigo-600 outline-none" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Telefon raqam</label>
-                <input type="tel" placeholder="+998" required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-indigo-600 outline-none" value={formData.parentPhone} onChange={e => setFormData({...formData, parentPhone: e.target.value})} />
-              </div>
-            </>
+            <div className="grid grid-cols-2 gap-4">
+              <input type="text" placeholder={t.firstName} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} />
+              <input type="text" placeholder={t.lastName} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} />
+            </div>
           )}
 
           <button type="submit" disabled={isLoading} className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg mt-4 active:scale-[0.98]">
-            {isLoading ? 'Yuklanmoqda...' : (mode === 'login' ? 'Kirish' : mode === 'register' ? 'Ro\'yxatdan o\'tish' : 'Yuborish')}
+            {mode === 'login' ? t.login : mode === 'register' ? t.register : "Send"}
           </button>
         </form>
 
         <div className="mt-6 flex flex-col items-center gap-3">
           <button onClick={() => setMode(mode === 'login' ? 'register' : 'login')} className="text-sm font-bold text-indigo-600 hover:underline">
-            {mode === 'login' ? 'Hisobingiz yo\'qmi? Ro\'yxatdan o\'ting' : 'Hisobingiz bormi? Kiring'}
+            {mode === 'login' ? t.noAccount : t.haveAccount}
           </button>
           {mode === 'login' && (
-            <button onClick={() => setMode('forgot')} className="text-xs text-slate-400 hover:text-indigo-600 transition">Parolni unutdingizmi?</button>
+            <button onClick={() => setMode('forgot')} className="text-[10px] text-slate-400 hover:text-indigo-600 transition font-black uppercase tracking-widest">{t.forgotPass}</button>
           )}
         </div>
       </div>
